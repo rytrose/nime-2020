@@ -1,0 +1,20 @@
+version: "3.4"
+
+services:
+
+  server:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+      target: build
+    depends_on: [mongo]
+    ports:
+      - 8000:8000
+    volumes:
+      - ./src:/server
+    command: watcher
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017

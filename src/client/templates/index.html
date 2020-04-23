@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+
+    <!-- Disable tap highlight on IE -->
+    <meta name="msapplication-tap-highlight" content="no">
+    <link rel="icon" href="images/favicon.ico">
+
+</head>
+
+<body>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+    
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+         https://firebase.google.com/docs/web/setup#available-libraries -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-analytics.js"></script> -->
+    <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-firestore.js"></script>
+    
+    <script>
+        // Your web app's Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyDwXxldpqZT1X3IK82OtJ2SzkjX6OhXGaY",
+            authDomain: "fir-test-9a9f3.firebaseapp.com",
+            databaseURL: "https://fir-test-9a9f3.firebaseio.com",
+            projectId: "fir-test-9a9f3",
+            storageBucket: "fir-test-9a9f3.appspot.com",
+            messagingSenderId: "1043409033882",
+            appId: "1:1043409033882:web:102b9f24ce8fd87ec15d23",
+            measurementId: "G-4Z8FM61HPQ"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        // firebase.analytics();
+    </script>
+
+    <script src="../js/main.js"></script>
+</body>
+
+</html>
