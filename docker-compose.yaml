@@ -4,14 +4,13 @@ services:
 
   server:
     build:
-      context: .
-      dockerfile: src/Dockerfile
+      context: server
       target: build
     depends_on: [mongo]
     ports:
       - 8000:8000
     volumes:
-      - ./src:/server
+      - ./server:/server
     command: watcher
 
   mongo:

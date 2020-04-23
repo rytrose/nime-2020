@@ -11,13 +11,13 @@ RUN go install github.com/canthefason/go-watcher/cmd/watcher
 WORKDIR /server
 
 # Copy package management files
-COPY src/go.* ./
+COPY go.* ./
 
 # Download dependencies
 RUN go mod download
 
 # Copy source
-COPY src .
+COPY . .
 
 # Build
 RUN go build -v -o /go/bin/server
