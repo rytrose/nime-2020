@@ -16,6 +16,8 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
+const projectID = "fir-test-9a9f3"
+
 func main() {
 	r := gin.Default()
 
