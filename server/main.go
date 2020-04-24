@@ -54,7 +54,6 @@ func loadLogging() {
 		log.Warnf("Unable to parse LOG_LEVEL env var, defaulting to INFO: %s", err)
 		l = log.InfoLevel
 	}
-
 	log.SetLevel(l)
 	log.SetFormatter(&log.JSONFormatter{})
 }

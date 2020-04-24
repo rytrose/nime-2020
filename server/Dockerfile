@@ -8,7 +8,7 @@ RUN go get -u github.com/canthefason/go-watcher
 RUN go install github.com/canthefason/go-watcher/cmd/watcher
 
 # Set working dir
-WORKDIR /server
+WORKDIR /app
 
 # Copy package management files
 COPY server/go.* ./
@@ -20,10 +20,10 @@ RUN go mod download
 COPY server .
 
 # Build
-RUN go build -v -o /go/bin/server
+RUN go build -v -o /go/bin/app
 
 # Run
-CMD /go/bin/server
+CMD /go/bin/app
 
 
 ############################################################
@@ -32,5 +32,5 @@ CMD /go/bin/server
 FROM bitnami/minideb:stretch as deploy
 
 # Copy binary from first stage
-COPY --from=build /go/bin/server /server
-ENTRYPOINT [ "/server" ]
+COPY --from=build /go/bin/app /app
+ENTRYPOINT [ "/app" ]
