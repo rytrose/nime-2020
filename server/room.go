@@ -11,7 +11,7 @@ var rooms = map[string]*Room{}
 
 // Room maintains the set of active members and broadcasts messages to the room members.
 type Room struct {
-	// ID for the room
+	// ID for the room.
 	roomID string
 
 	// Registered room members.

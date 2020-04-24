@@ -5,6 +5,8 @@ var auth = firebase.auth();
 var users = db.collection('users');
 var rooms = db.collection('rooms');
 
+var socket;
+
 
 // Create ephemeral user
 firebase.auth().signInAnonymously().catch((error) => {
@@ -36,6 +38,9 @@ firebase.auth().onAuthStateChanged((user) => {
                 // Handles refresh case
                 presenceRef.onDisconnect().set('offline');
             });
+
+            // Connect to server via websocket
+            connectWS(userDoc.id);
         }).catch((error) => {
             console.log("error adding user:", error);
         });
@@ -64,15 +69,21 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
     });
 });
 
-// Create WebSocket connection.
-const socket = new WebSocket('ws://localhost:8000/ws');
+// Connects to server via websocket
+let connectWS = (userID) => {
+    // Create WebSocket connection.
+    socket = new WebSocket('ws://localhost:8000/ws');
 
-// Connection opened
-socket.addEventListener('open', function (event) {
-    socket.send('Hello Server!');
-});
+    // Connection opened
+    socket.addEventListener('open', function (event) {
+        socket.send(JSON.stringify({
+            type: "announce",
+            "userID": userID
+        }));
+    });
 
-// Listen for messages
-socket.addEventListener('message', function (event) {
-    console.log('Message from server ', event.data);
-});
+    // Listen for messages
+    socket.addEventListener('message', function (event) {
+        console.log('Message from server!', event.data);
+    });
+}

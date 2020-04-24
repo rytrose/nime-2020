@@ -8,6 +8,7 @@ import (
 
 // Message types
 const (
+	TypeAnnounce  = "announce"
 	TypeEnterRoom = "enterRoom"
 	TypeExitRoom  = "exitRoom"
 	TypeGetState  = "getState"
@@ -16,6 +17,7 @@ const (
 // Message is the object websocket clients send.
 type Message struct {
 	Type   string `json:"type"`
+	UserID string `json:"userID"`
 	RoomID string `json:"roomID"`
 }
 
@@ -28,6 +30,9 @@ func dispatch(c *Client, b []byte) {
 	}
 
 	switch m.Type {
+	case TypeAnnounce:
+		log.Debugf("user \"%s\" announced (connection: %s)", m.UserID, c.connID)
+		c.userID = m.UserID
 	case TypeEnterRoom:
 	case TypeGetState:
 		if c.room == nil {

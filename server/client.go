@@ -4,19 +4,24 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// clients contains all existing clients
+// clients contains all existing clients.
 var clients = map[string]*Client{}
 
 // Client is a wrapper around the websocket connection
 type Client struct {
-	id string
+	// Connection ID for the client.
+	connID string
 
-	// The room the client is a member of
+	// User ID for the client.
+	userID string
+
+	// The room the client is a member of.
 	room *Room
 
 	// The websocket connection.
@@ -26,27 +31,28 @@ type Client struct {
 	send chan interface{}
 }
 
-// NewClient creates and starts new Client
-func NewClient(id string, conn *websocket.Conn) *Client {
+// NewClient creates and starts a new Client.
+func NewClient(conn *websocket.Conn) *Client {
 	c := &Client{
-		id:   id,
-		room: nil,
-		conn: conn,
-		send: make(chan interface{}, 256),
+		connID: uuid.New().String(),
+		userID: "", // To be populated on TypeAnnounce
+		room:   nil,
+		conn:   conn,
+		send:   make(chan interface{}, 256),
 	}
 	go c.reader()
 	go c.writer()
-	clients[c.id] = c
+	clients[c.connID] = c
 	return c
 }
 
-// Close frees up the websocket and removes from memory
+// Close frees up the websocket and removes from memory.
 func (c *Client) Close() {
 	c.conn.Close()
-	delete(clients, c.id)
+	delete(clients, c.connID)
 }
 
-// Send sends a message to the connected websocket client
+// Send sends a message to the connected websocket client.
 func (c *Client) Send(v interface{}) error {
 	select {
 	case c.send <- v:
@@ -56,16 +62,14 @@ func (c *Client) Send(v interface{}) error {
 	}
 }
 
-// reader loops over and dispatches incoming messages
+// reader loops over and dispatches incoming messages.
 func (c *Client) reader() {
-	defer func() {
-		c.conn.Close()
-	}()
 	for {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Errorf("error: %v", err)
+				c.Close()
 			}
 			break
 		}
@@ -74,7 +78,7 @@ func (c *Client) reader() {
 	}
 }
 
-// writer loops over the send channel and sends messages
+// writer loops over the send channel and sends messages.
 func (c *Client) writer() {
 	for {
 		// Send buffered messages

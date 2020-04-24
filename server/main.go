@@ -1,14 +1,10 @@
 package main
 
 import (
-	"context"
 	"net/http"
-	"time"
+	"os"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +15,7 @@ var upgrader = websocket.Upgrader{}
 const projectID = "fir-test-9a9f3"
 
 func main() {
+	loadLogging()
 	r := gin.Default()
 
 	// Configure templates and static files
@@ -37,17 +34,8 @@ func main() {
 		wsHandler(c.Writer, c.Request)
 	})
 
-	// Test db
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://mongo:27017"))
-	if err != nil {
-		log.Fatalf("DB connect error: %s", err)
-	}
-	ctx, _ = context.WithTimeout(context.Background(), 2*time.Second)
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		log.Fatalf("DB ping error: %s", err)
-	}
+	// Connect to db
+	NewDB("mongodb://mongo:27017")
 
 	r.Run(":8000")
 }
@@ -57,8 +45,16 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("Unable to upgrade ws request: %s", err)
 	}
-	c := NewClient("test", conn)
-	c.Send(map[string]string{
-		"foo": "bar",
-	})
+	NewClient(conn)
+}
+
+func loadLogging() {
+	l, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
+	if err != nil {
+		log.Warnf("Unable to parse LOG_LEVEL env var, defaulting to INFO: %s", err)
+		l = log.InfoLevel
+	}
+
+	log.SetLevel(l)
+	log.SetFormatter(&log.JSONFormatter{})
 }
