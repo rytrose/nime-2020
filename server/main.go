@@ -35,7 +35,7 @@ func main() {
 	})
 
 	// Connect to db
-	NewDB("mongodb://mongo:27017")
+	database = NewDB("mongodb://mongo:27017")
 
 	r.Run(":8000")
 }

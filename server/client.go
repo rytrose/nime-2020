@@ -19,10 +19,10 @@ type Client struct {
 	connID string
 
 	// User ID for the client.
-	userID string
+	UserID string
 
 	// The room the client is a member of.
-	room *Room
+	Room *Room
 
 	// The websocket connection.
 	conn *websocket.Conn
@@ -35,8 +35,8 @@ type Client struct {
 func NewClient(conn *websocket.Conn) *Client {
 	c := &Client{
 		connID: uuid.New().String(),
-		userID: "", // To be populated on TypeAnnounce
-		room:   nil,
+		UserID: "", // To be populated on TypeAnnounce
+		Room:   nil,
 		conn:   conn,
 		send:   make(chan interface{}, 256),
 	}
@@ -48,7 +48,11 @@ func NewClient(conn *websocket.Conn) *Client {
 
 // Close frees up the websocket and removes from memory.
 func (c *Client) Close() {
+	log.Infof("closing connection %s", c.connID)
 	c.conn.Close()
+	if c.Room != nil {
+		delete(c.Room.Members, c)
+	}
 	delete(clients, c.connID)
 }
 
@@ -68,12 +72,12 @@ func (c *Client) reader() {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Errorf("error: %v", err)
-				c.Close()
+				log.Errorf("unexpected close error: %v", err)
 			}
+			c.Close()
 			break
 		}
-		log.Infof("Received message: %s", m)
+		log.Debugf("received message: %s", m)
 		go dispatch(c, m)
 	}
 }
@@ -94,6 +98,9 @@ func (c *Client) writer() {
 			// Write message as JSON
 			err := c.conn.WriteJSON(m)
 			if err != nil {
+				if err == websocket.ErrCloseSent {
+					log.Errorf("error writing message: %s", err)
+				}
 				log.Errorf("error writing message: %s", err)
 			}
 		}

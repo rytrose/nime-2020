@@ -17,6 +17,7 @@
 <body>
     <h1 id="welcome"></h1>
     <div id="rooms"></div>
+    <div id="currentRoom"></div>
 
     <!-- The core Firebase JS SDK is always required and must be listed first -->
     <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
@@ -44,9 +45,10 @@
         };
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        // firebase.analytics();
     </script>
-
+    
+    <script src="../js/util.js"></script>
+    <script src="../js/socket.js"></script>
     <script src="../js/main.js"></script>
 </body>
 
