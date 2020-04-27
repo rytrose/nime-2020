@@ -41,7 +41,7 @@ firebase.auth().onAuthStateChanged((user) => {
             });
 
             // Connect to server via websocket
-            socket = new Socket("localhost:8000/ws");
+            socket = new Socket(`${location.host}/ws`);
 
             // Set up callbacks
             socket.register("stateUpdate", (m) => {

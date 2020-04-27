@@ -22,15 +22,8 @@ COPY server .
 # Build
 RUN go build -v -o /go/bin/app
 
+# Expose port 80
+EXPOSE 80
+
 # Run
 CMD /go/bin/app
-
-
-############################################################
-## Stage 2 - Deploy
-############################################################
-FROM bitnami/minideb:stretch as deploy
-
-# Copy binary from first stage
-COPY --from=build /go/bin/app /app
-ENTRYPOINT [ "/app" ]

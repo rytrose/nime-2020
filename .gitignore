@@ -3,6 +3,7 @@
 vendor
 .DS_Store
 node_modules
+env.txt
 
 ################
 # Firebase made

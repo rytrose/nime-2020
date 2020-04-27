@@ -35,9 +35,10 @@ func main() {
 	})
 
 	// Connect to db
-	database = NewDB("mongodb://mongo:27017")
+	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
+	database = NewDB(mongoConnectString)
 
-	r.Run(":8000")
+	r.Run(":80")
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {

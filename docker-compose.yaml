@@ -9,12 +9,13 @@ services:
       target: build
     depends_on: [mongo]
     ports:
-      - 8000:8000
+      - 8000:80
     volumes:
       - ./server:/app
     command: watcher
     environment:
       LOG_LEVEL: DEBUG
+      MONGO_CONNECTION_URL: mongodb://mongo:27017
 
   mongo:
     image: mongo:latest
