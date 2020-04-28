@@ -14,8 +14,8 @@ import (
 
 // Timeouts (in seconds) for mongodb interactions
 const (
-	TimeoutConnect = 30
-	TimeoutOp      = 10
+	TimeoutConnect = 10
+	TimeoutOp      = 2
 )
 
 // database is the common reference to mongo
