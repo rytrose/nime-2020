@@ -44,8 +44,8 @@ firebase.auth().onAuthStateChanged((user) => {
             socket = new Socket(`${location.host}/ws`);
 
             // Set up callbacks
-            socket.register("stateUpdate", (m) => {
-                $("#testState").html(m.state.test);
+            socket.register("operationUpdate", (m) => {
+                $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
             });
 
             // Announce this user 
@@ -67,40 +67,48 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
     if (!snapshot.size) console.log("No rooms.");
 
     snapshot.docChanges().forEach(function (change) {
-        let roomID = change.doc.id;
+        let roomName = change.doc.id;
         let roomData = change.doc.data();
-        console.log("Room change:", roomID, roomData);
+        console.log("Room change:", roomName, roomData);
         if (change.type === 'removed') $(`#r${change.doc.id}`).remove();
         else if(change.type === 'added') {
             $("#rooms").append(`
-            <div id="r${roomID}">
-                <h3 id="r${roomID}_name">${roomID}</h3>
-                <p id="r${roomID}_description">${roomData.description}</p>
-                <button id="r${roomID}_enter">Enter ${roomID}</button>
+            <div id="r${roomName}">
+                <h3 id="r${roomName}_name">${roomName}</h3>
+                <p id="r${roomName}_description">${roomData.description}</p>
+                <button id="r${roomName}_enter">Enter ${roomName}</button>
                 <hr>
             </div>
             `);
-            $(`#r${roomID}_enter`).click(() => {
+            $(`#r${roomName}_enter`).click(() => {
                 socket.sendWithResponse({
                     "id": uuidv4(),
                     "type": "enterRoom",
-                    "roomID": roomID
+                    "roomName": roomName
                 })
                     .then(res => {
+                        console.log("Entered room:", res);
                         $("#currentRoom").html(`
-                        <h3>Welcome to room ${res.roomData.roomID}!</h3>
-                        <p>Test room state: <span id="testState">${res.roomData.test}</span></p>
-                        <button id="changeState">Commit operation</button>
-                        <button id="exitRoom">Exit ${res.roomData.roomID}</button>
+                        <h3>Welcome to room ${res.roomDoc.RoomName}!</h3>
+                        <button id="operate">Commit operation</button>
+                        <button id="exitRoom">Exit ${res.roomDoc.RoomName}</button>
+                        <div id="operations">Most recent operations:</div>
                         `)
-                        $("#changeState").click(() => socket.send({
+                        for(let operation of res.operations) {
+                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
+                        }
+                        $("#operate").click(() => socket.send({
                             "type": "operation",
-                            "roomID": roomID,
+                            "roomName": roomName,
+                            "operation": {
+                                "operationType": "foo",
+                                "data": Math.random()
+                            }
                         }))
                         $("#exitRoom").click(() => socket.sendWithResponse({
                                 "id": uuidv4(),
                                 "type": "exitRoom",
-                                "roomID": roomID,
+                                "roomName": roomName,
                             })
                             .then(() => {
                                 $("#currentRoom").empty();
@@ -115,7 +123,7 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                 $("button[id$=_enter]").prop("disabled", true);
             })
         } else {
-            $(`#r${roomID}_description`).html(roomData.description);
+            $(`#r${roomName}_description`).html(roomData.description);
         }
     });
 });

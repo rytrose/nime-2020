@@ -11,8 +11,8 @@ var rooms = map[string]*Room{}
 
 // Room maintains the set of active members and broadcasts messages to the room members.
 type Room struct {
-	// RoomID is theID for the room.
-	RoomID string
+	// RoomName is the name for the room.
+	RoomName string
 
 	// Members are registered room members.
 	Members map[*Client]bool
@@ -26,13 +26,4 @@ func (r *Room) Broadcast(m interface{}) {
 			log.Errorf("%s", err)
 		}
 	}
-}
-
-// GetState returns the musical state associated with the room.
-func (r *Room) GetState(m *Message) (interface{}, error) {
-	doc, err := database.GetState(r.RoomID)
-	if err != nil {
-		return nil, err
-	}
-	return doc, nil
 }

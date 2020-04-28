@@ -10,19 +10,21 @@ import (
 
 // Message types
 const (
-	TypeAnnounce    = "announce"
-	TypeEnterRoom   = "enterRoom"
-	TypeExitRoom    = "exitRoom"
-	TypeOperation   = "operation"
-	TypeStateUpdate = "stateUpdate"
+	TypeAnnounce        = "announce"
+	TypeEnterRoom       = "enterRoom"
+	TypeExitRoom        = "exitRoom"
+	TypeOperation       = "operation"
+	TypeOperationUpdate = "operationUpdate"
 )
 
 // Message is the object websocket clients send.
 type Message struct {
-	ID     string `json:"id"`
-	Type   string `json:"type"`
-	UserID string `json:"userID"`
-	RoomID string `json:"roomID"`
+	ID            string `json:"id"`
+	Type          string `json:"type"`
+	UserID        string `json:"userID"`
+	RoomName      string `json:"roomName"`
+	OperationType string `json:"operationType"`
+	Operation     bson.M `json:"operation"`
 }
 
 // dispatch fans out different types of messages from websocket clients.
@@ -45,22 +47,30 @@ func dispatch(c *Client, b []byte) {
 			})
 			break
 		}
-		room, ok := rooms[m.RoomID]
+		room, ok := rooms[m.RoomName]
 		if !ok {
 			// For now create room
-			rooms[m.RoomID] = &Room{
-				RoomID:  m.RoomID,
-				Members: make(map[*Client]bool),
+			rooms[m.RoomName] = &Room{
+				RoomName: m.RoomName,
+				Members:  make(map[*Client]bool),
 			}
-			room = rooms[m.RoomID]
+			room = rooms[m.RoomName]
 			// c.Send(bson.M{
 			// 	"id":    m.ID,
-			// 	"error": fmt.Sprintf("room %s does not exist (TODO: sync from firestore)", m.RoomID),
+			// 	"error": fmt.Sprintf("room %s does not exist (TODO: sync from firestore)", m.RoomName),
 			// })
 		}
 		room.Members[c] = true
 		c.Room = room
-		doc, err := database.GetState(m.RoomID)
+		doc, err := database.GetRoom(m.RoomName)
+		if err != nil {
+			c.Send(bson.M{
+				"id":    m.ID,
+				"error": err,
+			})
+			break
+		}
+		ops, err := database.GetAllOperations(m.RoomName)
 		if err != nil {
 			c.Send(bson.M{
 				"id":    m.ID,
@@ -69,8 +79,9 @@ func dispatch(c *Client, b []byte) {
 			break
 		}
 		c.Send(bson.M{
-			"id":       m.ID,
-			"roomData": doc,
+			"id":         m.ID,
+			"roomDoc":    doc,
+			"operations": ops,
 		})
 	case TypeExitRoom:
 		if c.Room == nil {
@@ -92,7 +103,7 @@ func dispatch(c *Client, b []byte) {
 			})
 			break
 		}
-		doc, err := database.CommitOperation(c.Room.RoomID)
+		doc, err := database.CommitOperation(c.Room.RoomName, m.Operation)
 		if err != nil {
 			c.Send(bson.M{
 				"error": err,
@@ -100,8 +111,8 @@ func dispatch(c *Client, b []byte) {
 			break
 		}
 		c.Room.Broadcast(bson.M{
-			"type":  TypeStateUpdate,
-			"state": doc,
+			"type":      TypeOperationUpdate,
+			"operation": doc.Ops[len(doc.Ops)-1],
 		})
 	default:
 		log.Warnf("message type \"%s\" not implemented", m.Type)

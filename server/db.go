@@ -7,6 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -23,9 +24,27 @@ var database *DB
 
 // DB is a wrapper around a mongodb client.
 type DB struct {
-	client  *mongo.Client
-	db      *mongo.Database
-	roomCol *mongo.Collection
+	client              *mongo.Client
+	db                  *mongo.Database
+	roomCol             *mongo.Collection
+	operationBucketsCol *mongo.Collection
+	maxOpsPerBucket     int
+}
+
+// RoomDoc is a document that stores metadata about a room.
+type RoomDoc struct {
+	ID         primitive.ObjectID `bson:"_id"`
+	RoomName   string             `bson:"room_name"`
+	NumBuckets int                `bson:"num_buckets"`
+}
+
+// OpBucketDoc is a document that stores operations.
+type OpBucketDoc struct {
+	ID     primitive.ObjectID `bson:"_id"`
+	RoomID string             `bson:"room_id"`
+	Bucket int                `bson:"bucket"`
+	Count  int                `bson:"count"`
+	Ops    []bson.M           `bson:"operations"`
 }
 
 // NewDB creates a connection to the mongodb.
@@ -45,58 +64,183 @@ func NewDB(uri string) *DB {
 	db := client.Database("nime2020")
 
 	// Reference collections
+	// Adapted hybrid comments pattern: https://docs.mongodb.com/drivers/use-cases/storing-comments
 	roomCol := db.Collection("room")
+	operationBucketsCol := db.Collection("operationBuckets")
+
+	// Index names to ensure exist
+	roomNameIndexName := "room_name"
+	opBucketIndexName := "room_name_bucket"
+	expectedIndices := map[string]bool{
+		roomNameIndexName: false,
+		opBucketIndexName: false,
+	}
+
+	// List indexes - ROOM
+	opts := options.ListIndexes().SetMaxTime(TimeoutOp * time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+	cursor, err := roomCol.Indexes().List(ctx, opts)
+	if err != nil {
+		log.Fatalf("DB index list error: %s", err)
+	}
+	var roomIndRes []bson.M
+	if err = cursor.All(context.Background(), &roomIndRes); err != nil {
+		log.Fatalf("DB index list cursor error: %s", err)
+	}
+
+	// Check if known indices are created
+	for _, ind := range roomIndRes {
+		name := ind["name"].(string)
+		log.Infof("existing index: %+v", ind)
+		_, ok := expectedIndices[name]
+		if ok {
+			expectedIndices[name] = true
+		}
+	}
+
+	// List indexes - OP BUCKETS
+	opts = options.ListIndexes().SetMaxTime(TimeoutOp * time.Second)
+	ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+	cursor, err = operationBucketsCol.Indexes().List(ctx, opts)
+	if err != nil {
+		log.Fatalf("DB index list error: %s", err)
+	}
+	var opBucketsIndRes []bson.M
+	if err = cursor.All(context.Background(), &opBucketsIndRes); err != nil {
+		log.Fatalf("DB index list cursor error: %s", err)
+	}
+
+	// Check if known indices are created
+	for _, ind := range opBucketsIndRes {
+		name := ind["name"].(string)
+		log.Infof("existing index: %+v", ind)
+		_, ok := expectedIndices[name]
+		if ok {
+			expectedIndices[name] = true
+		}
+	}
+
+	// Create indexes that don't yet exist
+	for indexName, created := range expectedIndices {
+		if !created {
+			switch indexName {
+			case roomNameIndexName:
+				roomIdxModel := mongo.IndexModel{
+					Keys: bson.M{
+						"room_name": 1,
+					},
+					Options: options.Index().SetName(roomNameIndexName),
+				}
+				ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+				_, err = roomCol.Indexes().CreateOne(ctx, roomIdxModel)
+				if err != nil {
+					log.Fatalf("unable to ensure room index: %s", err)
+				}
+				break
+			case opBucketIndexName:
+				operationBucketsIdxModel := mongo.IndexModel{
+					Keys: bson.M{
+						"room_name": 1,
+						"bucket":    1,
+					},
+					Options: options.Index().SetName(opBucketIndexName),
+				}
+				ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+				_, err = operationBucketsCol.Indexes().CreateOne(ctx, operationBucketsIdxModel)
+				if err != nil {
+					log.Fatalf("unable to ensure op bucket index: %s", err)
+				}
+				break
+			}
+			log.Infof("created index %s", indexName)
+		}
+	}
 
 	return &DB{
-		client:  client,
-		db:      db,
-		roomCol: roomCol,
+		client:              client,
+		db:                  db,
+		roomCol:             roomCol,
+		operationBucketsCol: operationBucketsCol,
+		maxOpsPerBucket:     100,
 	}
 }
 
-// GetState fetches room state from mongo, creating it if it does not exist.
-func (db *DB) GetState(roomID string) (bson.M, error) {
+// GetRoom gets the room document given a human-readable roomName.
+func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 	ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-	var result bson.M
-	err := db.roomCol.FindOne(ctx, bson.M{"roomID": roomID}).Decode(&result)
+	query := bson.M{"room_name": roomName}
+
+	room := &RoomDoc{}
+	err := db.roomCol.FindOne(ctx, query).Decode(room)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			// For now, create document when one does not exist
 			// TODO: create document when syncing with firestore
+			log.Infof("creating room: %s", roomName)
 			ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-			doc := bson.M{"roomID": roomID, "test": 0}
-			_, err = db.roomCol.InsertOne(ctx, doc)
+			room = &RoomDoc{
+				RoomName:   roomName,
+				NumBuckets: 1,
+			}
+			res, err := db.roomCol.InsertOne(ctx, room)
 			if err != nil {
 				return nil, fmt.Errorf("database insert error: %s", err)
 			}
-			return doc, nil
+			room.ID = res.InsertedID.(primitive.ObjectID)
+			log.Infof("created room: %+v", room)
+			return room, nil
 		}
 		return nil, fmt.Errorf("database find error: %s", err)
 	}
-	return result, nil
+	return room, nil
 }
 
-// CommitOperation gets room state from mongo and adds an operation.
-func (db *DB) CommitOperation(roomID string) (bson.M, error) {
-	doc, err := db.GetState(roomID)
-	if err != nil {
-		return nil, err
-	}
-	testVal, ok := doc["test"]
-	if !ok {
-		return nil, fmt.Errorf("didn't find test in record")
-	}
-	testV := testVal.(int32)
+// CommitOperation stores an operation committed in a room.
+func (db *DB) CommitOperation(roomName string, op bson.M) (*OpBucketDoc, error) {
+	room, err := db.GetRoom(roomName)
 
 	ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-	var result bson.M
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	err = db.roomCol.FindOneAndUpdate(ctx, bson.M{"roomID": roomID}, bson.D{{"$set", bson.D{{"test", testV + 1}}}}, opts).Decode(&result)
+	query := bson.M{"room_name": room.RoomName, "bucket": room.NumBuckets}
+	operation := bson.M{"$inc": bson.M{"count": 1}, "$push": bson.M{"operations": op}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(true)
+
+	opBucket := &OpBucketDoc{}
+	err = db.operationBucketsCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(opBucket)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("unable to find room state to update")
-		}
-		return nil, fmt.Errorf("database update error: %s", err)
+		return nil, fmt.Errorf("database update op bucket with op error: %s", err)
 	}
-	return result, nil
+
+	if opBucket.Count > db.maxOpsPerBucket {
+		ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+		query := bson.M{"_id": room.ID, "num_buckets": room.NumBuckets}
+		update := bson.M{"$inc": bson.M{"num_buckets": 1}}
+
+		_, err = db.roomCol.UpdateOne(ctx, query, update)
+		if err != nil {
+			return nil, fmt.Errorf("database update num op buckets error: %s", err)
+		}
+	}
+
+	return opBucket, nil
+}
+
+// GetAllOperations returns the full history of operations for a given room.
+func (db *DB) GetAllOperations(roomName string) ([]bson.M, error) {
+	all := []bson.M{}
+	ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+	query := bson.M{"room_name": roomName}
+
+	cursor, err := db.operationBucketsCol.Find(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("database find error: %s", err)
+	}
+	var results []OpBucketDoc
+	ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, fmt.Errorf("database find cursor error: %s", err)
+	}
+	for _, bucketDoc := range results {
+		all = append(all, bucketDoc.Ops...)
+	}
+	return all, nil
 }
