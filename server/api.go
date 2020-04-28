@@ -64,6 +64,7 @@ func dispatch(c *Client, b []byte) {
 		c.Room = room
 		doc, err := database.GetRoom(m.RoomName)
 		if err != nil {
+			log.Error(err)
 			c.Send(bson.M{
 				"id":    m.ID,
 				"error": err,
@@ -72,6 +73,7 @@ func dispatch(c *Client, b []byte) {
 		}
 		ops, err := database.GetAllOperations(m.RoomName)
 		if err != nil {
+			log.Error(err)
 			c.Send(bson.M{
 				"id":    m.ID,
 				"error": err,

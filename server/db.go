@@ -68,6 +68,21 @@ func NewDB(uri string) *DB {
 	roomCol := db.Collection("room")
 	operationBucketsCol := db.Collection("operationBuckets")
 
+	dbObj := &DB{
+		client:              client,
+		db:                  db,
+		roomCol:             roomCol,
+		operationBucketsCol: operationBucketsCol,
+		maxOpsPerBucket:     100,
+	}
+
+	// Ensure indicies
+	dbObj.configureIndices()
+	return dbObj
+}
+
+// configureIndices ensure the DB has the necessary indices created.
+func (db *DB) configureIndices() {
 	// Index names to ensure exist
 	roomNameIndexName := "room_name"
 	opBucketIndexName := "room_name_bucket"
@@ -76,10 +91,10 @@ func NewDB(uri string) *DB {
 		opBucketIndexName: false,
 	}
 
-	// List indexes - ROOM
+	// List indices - ROOM
 	opts := options.ListIndexes().SetMaxTime(TimeoutOp * time.Second)
-	ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-	cursor, err := roomCol.Indexes().List(ctx, opts)
+	ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
+	cursor, err := db.roomCol.Indexes().List(ctx, opts)
 	if err != nil {
 		log.Fatalf("DB index list error: %s", err)
 	}
@@ -98,10 +113,10 @@ func NewDB(uri string) *DB {
 		}
 	}
 
-	// List indexes - OP BUCKETS
+	// List indices - OP BUCKETS
 	opts = options.ListIndexes().SetMaxTime(TimeoutOp * time.Second)
 	ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-	cursor, err = operationBucketsCol.Indexes().List(ctx, opts)
+	cursor, err = db.operationBucketsCol.Indexes().List(ctx, opts)
 	if err != nil {
 		log.Fatalf("DB index list error: %s", err)
 	}
@@ -120,7 +135,7 @@ func NewDB(uri string) *DB {
 		}
 	}
 
-	// Create indexes that don't yet exist
+	// Create indices that don't yet exist
 	for indexName, created := range expectedIndices {
 		if !created {
 			switch indexName {
@@ -132,7 +147,7 @@ func NewDB(uri string) *DB {
 					Options: options.Index().SetName(roomNameIndexName),
 				}
 				ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-				_, err = roomCol.Indexes().CreateOne(ctx, roomIdxModel)
+				_, err = db.roomCol.Indexes().CreateOne(ctx, roomIdxModel)
 				if err != nil {
 					log.Fatalf("unable to ensure room index: %s", err)
 				}
@@ -146,7 +161,7 @@ func NewDB(uri string) *DB {
 					Options: options.Index().SetName(opBucketIndexName),
 				}
 				ctx, _ = context.WithTimeout(context.Background(), TimeoutOp*time.Second)
-				_, err = operationBucketsCol.Indexes().CreateOne(ctx, operationBucketsIdxModel)
+				_, err = db.operationBucketsCol.Indexes().CreateOne(ctx, operationBucketsIdxModel)
 				if err != nil {
 					log.Fatalf("unable to ensure op bucket index: %s", err)
 				}
@@ -154,14 +169,6 @@ func NewDB(uri string) *DB {
 			}
 			log.Infof("created index %s", indexName)
 		}
-	}
-
-	return &DB{
-		client:              client,
-		db:                  db,
-		roomCol:             roomCol,
-		operationBucketsCol: operationBucketsCol,
-		maxOpsPerBucket:     100,
 	}
 }
 
@@ -179,6 +186,7 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 			log.Infof("creating room: %s", roomName)
 			ctx, _ := context.WithTimeout(context.Background(), TimeoutOp*time.Second)
 			room = &RoomDoc{
+				ID:         primitive.NewObjectID(),
 				RoomName:   roomName,
 				NumBuckets: 1,
 			}
