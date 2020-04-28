@@ -38,7 +38,7 @@ func NewClient(conn *websocket.Conn) *Client {
 		UserID: "", // To be populated on TypeAnnounce
 		Room:   nil,
 		conn:   conn,
-		send:   make(chan interface{}, 256),
+		send:   make(chan interface{}),
 	}
 	go c.reader()
 	go c.writer()
@@ -85,24 +85,20 @@ func (c *Client) reader() {
 // writer loops over the send channel and sends messages.
 func (c *Client) writer() {
 	for {
-		// Send buffered messages
-		n := len(c.send)
-		for i := 0; i < n; i++ {
-			m, ok := <-c.send
-			if !ok {
-				// Send channel has been closed
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
+		m, ok := <-c.send
+		if !ok {
+			// Send channel has been closed
+			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			return
+		}
 
-			// Write message as JSON
-			err := c.conn.WriteJSON(m)
-			if err != nil {
-				if err == websocket.ErrCloseSent {
-					log.Errorf("error writing message: %s", err)
-				}
+		// Write message as JSON
+		err := c.conn.WriteJSON(m)
+		if err != nil {
+			if err == websocket.ErrCloseSent {
 				log.Errorf("error writing message: %s", err)
 			}
+			log.Errorf("error writing message: %s", err)
 		}
 	}
 }
