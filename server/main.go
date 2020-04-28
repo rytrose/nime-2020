@@ -41,6 +41,9 @@ func main() {
 	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
 	database = NewDB(mongoConnectString)
 
+	// Connect to firestore
+	fs = NewFirestore()
+
 	r.Run(":80")
 }
 

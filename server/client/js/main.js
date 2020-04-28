@@ -69,7 +69,6 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
     snapshot.docChanges().forEach(function (change) {
         let roomName = change.doc.id;
         let roomData = change.doc.data();
-        console.log("Room change:", roomName, roomData);
         if (change.type === 'removed') $(`#r${change.doc.id}`).remove();
         else if(change.type === 'added') {
             $("#rooms").append(`
@@ -87,7 +86,6 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                     "roomName": roomName
                 })
                     .then(res => {
-                        console.log("Entered room:", res);
                         $("#currentRoom").html(`
                         <h3>Welcome to room ${res.roomDoc.RoomName}!</h3>
                         <button id="operate">Commit operation</button>
