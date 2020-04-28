@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gin-contrib/pprof"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/gorilla/websocket"
@@ -17,6 +19,7 @@ const projectID = "fir-test-9a9f3"
 func main() {
 	loadLogging()
 	r := gin.Default()
+	pprof.Register(r)
 
 	// Configure templates and static files
 	r.LoadHTMLGlob("client/templates/*")

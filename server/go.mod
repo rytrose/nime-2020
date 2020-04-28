@@ -3,6 +3,7 @@ module github.com/rytrose/nime2020
 go 1.13
 
 require (
+	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.6.2
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect

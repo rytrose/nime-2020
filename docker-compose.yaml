@@ -10,6 +10,7 @@ services:
     depends_on: [mongo]
     ports:
       - 8000:80
+      - 6060:6060
     volumes:
       - ./server:/app
     command: watcher
