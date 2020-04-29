@@ -19,7 +19,10 @@ const projectID = "fir-test-9a9f3"
 func main() {
 	loadLogging()
 	r := gin.Default()
-	pprof.Register(r)
+
+	if os.Getenv("PPROF") == "1" {
+		pprof.Register(r)
+	}
 
 	// Configure templates and static files
 	r.LoadHTMLGlob("client/templates/*")
