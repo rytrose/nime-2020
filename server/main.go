@@ -22,8 +22,27 @@ func main() {
 	pprof.Register(r)
 
 	// Configure templates and static files
-	r.LoadHTMLGlob("client/templates/*")
+	r.LoadHTMLFiles("client/public/sequencer.html", "client/templates/index.html")
 	r.Static("/js", "client/js")
+	r.Static("/public", "client/public")
+	r.StaticFile("/aubio.wasm", "client/public/aubio.wasm")
+	r.StaticFile("/aubio.js", "client/public/aubio.js")
+	r.StaticFile("/a.wasm", "client/public/a.wasm")
+	r.StaticFile("/automation-icon-disabled.png", "client/public/automation-icon-disabled.png")
+	r.StaticFile("/automation-icon-enabled.png", "client/public/automation-icon-enabled.png")
+	r.StaticFile("/arrow-loop.png", "client/public/arrow-loop.png")
+	r.StaticFile("/arrow-loop-looping.png", "client/public/arrow-loop-looping.png")
+	r.StaticFile("/service-worker.js", "client/public/service-worker.js")
+	r.StaticFile("/a.js", "client/public/a.js")
+
+	r.GET("/nime", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "sequencer.html", nil);
+	})
+
+	r.GET("/nime/:id", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "sequencer.html", nil);
+	})
+
 
 	// Root app
 	r.GET("/", func(c *gin.Context) {
