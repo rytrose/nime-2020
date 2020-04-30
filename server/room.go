@@ -18,12 +18,21 @@ type Room struct {
 	Members map[*Client]bool
 }
 
-// Broadcast sends a message to all connected members.
-func (r *Room) Broadcast(m interface{}) {
+// Broadcast sends a message to all connected members, except those passed in to ignore.
+func (r *Room) Broadcast(m interface{}, ignoreClients ...*Client) {
 	for c := range r.Members {
-		err := c.Send(m)
-		if err != nil {
-			log.Errorf("%s", err)
+		ignore := false
+		for _, toIgnore := range ignoreClients {
+			if c == toIgnore {
+				ignore = true
+				break
+			}
+		}
+		if !ignore {
+			err := c.Send(m)
+			if err != nil {
+				log.Errorf("%s", err)
+			}
 		}
 	}
 }

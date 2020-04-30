@@ -49,7 +49,7 @@ func dispatch(c *Client, b []byte) {
 			c.Send(err)
 			break
 		}
-		c.Room.Broadcast(res)
+		c.Room.Broadcast(res, c)
 	default:
 		log.Warnf("message type \"%s\" not implemented", m.Type)
 	}

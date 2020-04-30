@@ -17,9 +17,7 @@ firebase.auth().signInAnonymously().catch((error) => {
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         // Add user to firestore
-        users.add({
-            online: true
-        }).then((userDoc) => {
+        users.add({}).then((userDoc) => {
             let userID = userDoc.id;
             $("#welcome").html(`Welcome, ${userID}!`);
             console.log("added user");
@@ -33,11 +31,12 @@ firebase.auth().onAuthStateChanged((user) => {
             });
             
             // On RTDB set offline for deletion from firestore
-            // On navigate away, or internet connection lost
-            presenceRef.onDisconnect().set('offline');
-            $(window).on('beforeunload', () => {
-                // Handles refresh case
-                presenceRef.set('offline');
+            $(window).on('beforeunload', (e) => {
+                presenceRef.set('offline')
+                    .then(() => console.log("set user offline"))
+                    .catch((error) => console.error("unable to set user offline:", error));
+                e.returnValue = "";
+                return "";
             });
 
             // Connect to server via websocket
