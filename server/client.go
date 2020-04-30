@@ -6,12 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"go.mongodb.org/mongo-driver/bson"
 
 	log "github.com/sirupsen/logrus"
 )
 
 // clients contains all existing clients.
-var clients = map[string]*Client{}
+var clients = NewClientMap()
 
 // Client is a wrapper around the websocket connection
 type Client struct {
@@ -27,22 +28,30 @@ type Client struct {
 	// The websocket connection.
 	conn *websocket.Conn
 
+	// Timeout for channel operations in milliseconds.
+	chanTimeout int
+
 	// Buffered channel of outbound messages.
 	send chan interface{}
+
+	// Channel to wait on for full state update.
+	stateUpdate chan bson.M
 }
 
 // NewClient creates and starts a new Client.
 func NewClient(conn *websocket.Conn) *Client {
 	c := &Client{
-		connID: uuid.New().String(),
-		UserID: "", // To be populated on TypeAnnounce
-		Room:   nil,
-		conn:   conn,
-		send:   make(chan interface{}),
+		connID:      uuid.New().String(),
+		UserID:      "", // To be populated on TypeAnnounce
+		Room:        nil,
+		conn:        conn,
+		chanTimeout: 500,
+		send:        make(chan interface{}),
+		stateUpdate: make(chan bson.M),
 	}
 	go c.reader()
 	go c.writer()
-	clients[c.connID] = c
+	clients.Set(c, true)
 	return c
 }
 
@@ -51,9 +60,9 @@ func (c *Client) Close() {
 	log.Infof("closing connection %s", c.connID)
 	c.conn.Close()
 	if c.Room != nil {
-		delete(c.Room.Members, c)
+		c.Room.Members.Delete(c)
 	}
-	delete(clients, c.connID)
+	clients.Delete(c)
 }
 
 // Send sends a message to the connected websocket client.
@@ -61,8 +70,35 @@ func (c *Client) Send(v interface{}) error {
 	select {
 	case c.send <- v:
 		return nil
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(time.Duration(c.chanTimeout) * time.Millisecond):
 		return fmt.Errorf("unable to send message (send channel timeout)")
+	}
+}
+
+// WaitForState waits for the full state to be provided to the client from another.
+func (c *Client) WaitForState() (bson.M, error) {
+	if c.Room == nil {
+		return nil, fmt.Errorf("client not in room to receive state")
+	}
+	c.Room.NeedsState.Set(c, true)
+	defer func() {
+		c.Room.NeedsState.Delete(c)
+	}()
+
+	select {
+	case state := <-c.stateUpdate:
+		return state, nil
+	case <-time.After(time.Duration(c.chanTimeout) * time.Millisecond):
+		return nil, fmt.Errorf("did not receive full state (receive channel timeout)")
+	}
+}
+
+// ReceiveState receives the full state of a room.
+func (c *Client) ReceiveState(state bson.M) {
+	select {
+	case c.stateUpdate <- state:
+	case <-time.After(time.Duration(c.chanTimeout) * time.Millisecond):
+		log.Errorf("unable to send state (send channel timeout)")
 	}
 }
 

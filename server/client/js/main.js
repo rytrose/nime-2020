@@ -94,14 +94,18 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                         for(let operation of res.operations) {
                             $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
                         }
-                        $("#operate").click(() => socket.send({
-                            "type": "operation",
-                            "roomName": roomName,
-                            "operation": {
+                        $("#operate").click(() => {
+                            let operation = {
                                 "operationType": "foo",
                                 "data": Math.random()
-                            }
-                        }))
+                            };
+                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
+                            socket.send({
+                                "type": "operation",
+                                "roomName": roomName,
+                                "operation": operation
+                            });
+                        });
                         $("#exitRoom").click(() => socket.sendWithResponse({
                                 "id": uuidv4(),
                                 "type": "exitRoom",

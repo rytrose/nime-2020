@@ -7,7 +7,7 @@ import (
 )
 
 // rooms contain all the existing rooms
-var rooms = map[string]*Room{}
+var rooms = NewRoomMap()
 
 // Room maintains the set of active members and broadcasts messages to the room members.
 type Room struct {
@@ -15,12 +15,15 @@ type Room struct {
 	RoomName string
 
 	// Members are registered room members.
-	Members map[*Client]bool
+	Members *ClientMap
+
+	// NeedsState contains clients that need the most recent state.
+	NeedsState *ClientMap
 }
 
 // Broadcast sends a message to all connected members, except those passed in to ignore.
 func (r *Room) Broadcast(m interface{}, ignoreClients ...*Client) {
-	for c := range r.Members {
+	f := func(c *Client, v bool) bool {
 		ignore := false
 		for _, toIgnore := range ignoreClients {
 			if c == toIgnore {
@@ -34,5 +37,7 @@ func (r *Room) Broadcast(m interface{}, ignoreClients ...*Client) {
 				log.Errorf("%s", err)
 			}
 		}
+		return true
 	}
+	r.Members.Range(f)
 }
