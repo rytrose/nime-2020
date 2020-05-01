@@ -222,7 +222,7 @@ func (db *DB) CommitOperation(roomName string, op bson.M) (*OpBucketDoc, error) 
 		return nil, fmt.Errorf("database update op bucket with op error: %s", err)
 	}
 
-	if opBucket.Count > db.maxOpsPerBucket {
+	if opBucket.Count == db.maxOpsPerBucket {
 		ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
 		query := bson.M{"_id": room.ID, "num_buckets": room.NumBuckets}
 		update := bson.M{"$inc": bson.M{"num_buckets": 1}}

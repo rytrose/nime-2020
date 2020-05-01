@@ -14,9 +14,11 @@ const (
 	TypeExitRoom        = "exitRoom"
 	TypeOperation       = "operation"
 	TypeOperationUpdate = "operationUpdate"
+	TypeRequestState    = "requestState"
+	TypeState           = "state"
 )
 
-// Message is the object websocket clients send.
+// Message is the superset of the object websocket clients send.
 type Message struct {
 	ID            string `json:"id"`
 	Type          string `json:"type"`
@@ -24,6 +26,7 @@ type Message struct {
 	RoomName      string `json:"roomName"`
 	OperationType string `json:"operationType"`
 	Operation     bson.M `json:"operation"`
+	State         bson.M `json:"state"`
 }
 
 // dispatch fans out different types of messages from websocket clients.
@@ -50,6 +53,8 @@ func dispatch(c *Client, b []byte) {
 			break
 		}
 		c.Room.Broadcast(res, c)
+	case TypeState:
+		State(c, m)
 	default:
 		log.Warnf("message type \"%s\" not implemented", m.Type)
 	}
