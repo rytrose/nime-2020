@@ -46,6 +46,9 @@ firebase.auth().onAuthStateChanged((user) => {
             socket.register("operationUpdate", (m) => {
                 $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
             });
+            socket.register("clearState", (m) => {
+                $("#operations").empty();
+            });
 
             // Announce this user 
             socket.addEventListener("open", () => {

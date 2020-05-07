@@ -9,13 +9,14 @@ import (
 
 // Message types
 const (
-	TypeAnnounce        = "announce"
-	TypeEnterRoom       = "enterRoom"
-	TypeExitRoom        = "exitRoom"
-	TypeOperation       = "operation"
-	TypeOperationUpdate = "operationUpdate"
-	TypeRequestState    = "requestState"
-	TypeState           = "state"
+	TypeAnnounce        = "announce"        // [Client->Server] Provides a user ID to the client
+	TypeEnterRoom       = "enterRoom"       // [Client->Server] Client associates with a room, and requests the current state
+	TypeExitRoom        = "exitRoom"        // [Client->Server] Client disassociates with a room
+	TypeOperation       = "operation"       // [Client->Server] Client makes and operation
+	TypeOperationUpdate = "operationUpdate" // [Server->Client] Server disseminates an operation to all Clients in a room
+	TypeRequestState    = "requestState"    // [Server->Client] Server asks a Client for the full state of the room
+	TypeState           = "state"           // [Client->Server] Client sends the full state to the server
+	TypeClearState      = "clearState"      // [Server->Client] Server tells a Client to clear the current state
 )
 
 // Message is the superset of the object websocket clients send.
