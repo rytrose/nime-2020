@@ -1,0 +1,36 @@
+{
+	"info": {
+		"_postman_id": "40307282-7d24-4df6-8163-4298b26e760c",
+		"name": "NIME 2020",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Delete Operations for Room",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-Admin-Key",
+						"value": "{{ADMIN_KEY}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{HOSTNAME}}/admin/rooms/{{ROOM_NAME}}/operations",
+					"host": [
+						"{{HOSTNAME}}"
+					],
+					"path": [
+						"admin",
+						"rooms",
+						"{{ROOM_NAME}}",
+						"operations"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
