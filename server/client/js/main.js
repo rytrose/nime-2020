@@ -49,6 +49,9 @@ firebase.auth().onAuthStateChanged((user) => {
             socket.register("clearState", (m) => {
                 $("#operations").empty();
             });
+            socket.register("numMembersUpdate", (m) => {
+                $("#numMembers").text(m.numMembers);
+            });
 
             // Announce this user 
             socket.addEventListener("open", () => {
@@ -90,6 +93,7 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                     .then(res => {
                         $("#currentRoom").html(`
                         <h3>Welcome to room ${res.roomDoc.RoomName}!</h3>
+                        <p><span id="numMembers">${res.roomDoc.NumMembers}</span> people in this room</p>
                         <button id="operate">Commit operation</button>
                         <button id="exitRoom">Exit ${res.roomDoc.RoomName}</button>
                         <div id="operations">Most recent operations:</div>

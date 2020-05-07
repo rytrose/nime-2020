@@ -36,6 +36,7 @@ type RoomDoc struct {
 	ID         primitive.ObjectID `bson:"_id"`
 	RoomName   string             `bson:"room_name"`
 	NumBuckets int                `bson:"num_buckets"`
+	NumMembers int                `bson:"num_members"`
 }
 
 // OpBucketDoc is a document that stores operations.
@@ -194,6 +195,7 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 				ID:         primitive.NewObjectID(),
 				RoomName:   roomName,
 				NumBuckets: 1,
+				NumMembers: 0,
 			}
 			res, err := db.roomCol.InsertOne(ctx, room)
 			if err != nil {
@@ -205,6 +207,21 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 		return nil, fmt.Errorf("database find error: %s", err)
 	}
 	return room, nil
+}
+
+// UpdateRoomNumMembers increments/decrements the number of members in a room.
+func (db *DB) UpdateRoomNumMembers(roomName string, updateIncrement int) (*RoomDoc, error) {
+	ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
+	query := bson.M{"room_name": roomName}
+	operation := bson.M{"$inc": bson.M{"num_members": updateIncrement}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	roomDoc := &RoomDoc{}
+	err := db.roomCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(roomDoc)
+	if err != nil {
+		return nil, fmt.Errorf("database update room num_members error: %s", err)
+	}
+	return roomDoc, nil
 }
 
 // CommitOperation stores an operation committed in a room.
