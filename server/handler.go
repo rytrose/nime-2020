@@ -7,14 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Announce registers a user with a client connection.
-func Announce(c *Client, m *Message) {
+// AnnounceHandler registers a user with a client connection.
+func AnnounceHandler(c *Client, m *Message) {
 	log.Debugf("user \"%s\" announced", m.UserID)
 	c.UserID = m.UserID
 }
 
-// EnterRoom registers a client with a room.
-func EnterRoom(c *Client, m *Message) bson.M {
+// EnterRoomHandler registers a client with a room.
+func EnterRoomHandler(c *Client, m *Message) bson.M {
 	// Get room
 	room, ok := rooms.Get(m.RoomName)
 	if !ok {
@@ -27,7 +27,7 @@ func EnterRoom(c *Client, m *Message) bson.M {
 		rooms.Set(m.RoomName, room)
 	}
 
-	// Get room data
+	// Get room data (creates from firestore if doesn't exist)
 	doc, err := database.GetRoom(m.RoomName)
 	if err != nil {
 		return bson.M{
@@ -66,6 +66,22 @@ func EnterRoom(c *Client, m *Message) bson.M {
 		}
 	}
 
+	// Increment room num_members
+	doc, err = database.UpdateRoomNumMembers(m.RoomName, 1)
+	if err != nil {
+		c.Room = nil
+		return bson.M{
+			"id":    m.ID,
+			"error": fmt.Sprintf("unable to increment room num_members: %s", err),
+		}
+	}
+
+	// Update clients with num_members
+	c.Room.Broadcast(bson.M{
+		"type":       TypeNumMembersUpdate,
+		"numMembers": doc.NumMembers,
+	}, c)
+
 	// Add client to room
 	room.Members.Set(c, true)
 
@@ -77,14 +93,31 @@ func EnterRoom(c *Client, m *Message) bson.M {
 	}
 }
 
-// ExitRoom unregisters a client from a room.
-func ExitRoom(c *Client, m *Message) bson.M {
+// ExitRoomHandler unregisters a client from a room.
+func ExitRoomHandler(c *Client, m *Message) bson.M {
+	// Check if client is in room
 	if c.Room == nil {
 		return bson.M{
 			"id":    m.ID,
 			"error": fmt.Sprintf("user %s is not in a room to exit", c.UserID),
 		}
 	}
+
+	// Decrement room num_members
+	doc, err := database.UpdateRoomNumMembers(m.RoomName, -1)
+	if err != nil {
+		return bson.M{
+			"id":    m.ID,
+			"error": fmt.Sprintf("unable to decrement room num_members: %s", err),
+		}
+	}
+
+	// Update clients with num_members
+	c.Room.Broadcast(bson.M{
+		"type":       TypeNumMembersUpdate,
+		"numMembers": doc.NumMembers,
+	}, c)
+
 	c.Room.Members.Delete(c)
 	c.Room = nil
 	return bson.M{
@@ -92,8 +125,8 @@ func ExitRoom(c *Client, m *Message) bson.M {
 	}
 }
 
-// Operate commits an operation to a room.
-func Operate(c *Client, m *Message) (bson.M, bson.M) {
+// OperationHandler commits an operation to a room.
+func OperationHandler(c *Client, m *Message) (bson.M, bson.M) {
 	if c.Room == nil {
 		return nil, bson.M{
 			"error": fmt.Sprintf("user %s is not in a room to commit an operation", c.UserID),
@@ -111,8 +144,8 @@ func Operate(c *Client, m *Message) (bson.M, bson.M) {
 	}, nil
 }
 
-// State receives the full state from a client in order to send to other clients who need it.
-func State(c *Client, m *Message) {
+// StateHandler receives the full state from a client in order to send to other clients who need it.
+func StateHandler(c *Client, m *Message) {
 	room, ok := rooms.Get(m.RoomName)
 	if !ok {
 		log.Warnf("room %s doesn't exist", m.RoomName)

@@ -36,15 +36,16 @@ type RoomDoc struct {
 	ID         primitive.ObjectID `bson:"_id"`
 	RoomName   string             `bson:"room_name"`
 	NumBuckets int                `bson:"num_buckets"`
+	NumMembers int                `bson:"num_members"`
 }
 
 // OpBucketDoc is a document that stores operations.
 type OpBucketDoc struct {
-	ID     primitive.ObjectID `bson:"_id"`
-	RoomID string             `bson:"room_id"`
-	Bucket int                `bson:"bucket"`
-	Count  int                `bson:"count"`
-	Ops    []bson.M           `bson:"operations"`
+	ID       primitive.ObjectID `bson:"_id"`
+	RoomName string             `bson:"room_name"`
+	Bucket   int                `bson:"bucket"`
+	Count    int                `bson:"count"`
+	Ops      []bson.M           `bson:"operations"`
 }
 
 // NewDB creates a connection to the mongodb.
@@ -194,6 +195,7 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 				ID:         primitive.NewObjectID(),
 				RoomName:   roomName,
 				NumBuckets: 1,
+				NumMembers: 0,
 			}
 			res, err := db.roomCol.InsertOne(ctx, room)
 			if err != nil {
@@ -205,6 +207,21 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 		return nil, fmt.Errorf("database find error: %s", err)
 	}
 	return room, nil
+}
+
+// UpdateRoomNumMembers increments/decrements the number of members in a room.
+func (db *DB) UpdateRoomNumMembers(roomName string, updateIncrement int) (*RoomDoc, error) {
+	ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
+	query := bson.M{"room_name": roomName}
+	operation := bson.M{"$inc": bson.M{"num_members": updateIncrement}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	roomDoc := &RoomDoc{}
+	err := db.roomCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(roomDoc)
+	if err != nil {
+		return nil, fmt.Errorf("database update room num_members error: %s", err)
+	}
+	return roomDoc, nil
 }
 
 // CommitOperation stores an operation committed in a room.
@@ -255,4 +272,42 @@ func (db *DB) GetAllOperations(roomName string) ([]bson.M, error) {
 		all = append(all, bucketDoc.Ops...)
 	}
 	return all, nil
+}
+
+// DeleteAllOperations deletes all operations for a given room.
+func (db *DB) DeleteAllOperations(roomName string) error {
+	// Delete all buckets
+	ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
+	query := bson.M{"room_name": roomName}
+
+	_, err := db.operationBucketsCol.DeleteMany(ctx, query)
+	if err != nil {
+		return fmt.Errorf("database delete many error: %s", err)
+	}
+
+	// Set num_buckets to one
+	ctx, _ = context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
+	query = bson.M{"room_name": roomName}
+	operation := bson.M{"$set": bson.M{"num_buckets": 1}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	roomDoc := &RoomDoc{}
+	err = db.roomCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(roomDoc)
+	if err != nil {
+		return fmt.Errorf("database update room num_buckets error: %s", err)
+	}
+	if roomDoc.NumBuckets != 1 {
+		return fmt.Errorf("num_buckets of room %s was not set to 1 after deleting all operations", roomName)
+	}
+
+	// Reset all clients
+	room, ok := rooms.Get(roomName)
+	if !ok {
+		return fmt.Errorf("server is not tracking room %s, but its operations have been deleted", roomName)
+	}
+	room.Broadcast(bson.M{
+		"type": TypeClearState,
+	})
+
+	return nil
 }

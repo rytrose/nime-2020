@@ -60,6 +60,17 @@ func (c *Client) Close() {
 	log.Infof("closing connection %s", c.connID)
 	c.conn.Close()
 	if c.Room != nil {
+		// Decrement room num_members
+		doc, err := database.UpdateRoomNumMembers(c.Room.RoomName, -1)
+		if err != nil {
+			log.Errorf("[DATA OUT OF SYNC] unable to decrement num_members for room %s", c.Room.RoomName)
+		}
+
+		// Update clients with num_members
+		c.Room.Broadcast(bson.M{
+			"type":       TypeNumMembersUpdate,
+			"numMembers": doc.NumMembers,
+		}, c)
 		c.Room.Members.Delete(c)
 	}
 	clients.Delete(c)

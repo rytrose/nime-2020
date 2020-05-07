@@ -18,6 +18,7 @@ services:
       LOG_LEVEL: DEBUG
       MONGO_CONNECTION_URL: mongodb://mongo:27017
       PPROF: 1
+      ADMIN_KEY: local
 
   mongo:
     image: mongo:latest

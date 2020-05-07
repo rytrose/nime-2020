@@ -9,13 +9,16 @@ import (
 
 // Message types
 const (
-	TypeAnnounce        = "announce"
-	TypeEnterRoom       = "enterRoom"
-	TypeExitRoom        = "exitRoom"
-	TypeOperation       = "operation"
-	TypeOperationUpdate = "operationUpdate"
-	TypeRequestState    = "requestState"
-	TypeState           = "state"
+	TypeAnnounce  = "announce"  // [Client->Server] Provides a user ID to the client
+	TypeEnterRoom = "enterRoom" // [Client->Server] Client associates with a room, and requests the current state
+	TypeExitRoom  = "exitRoom"  // [Client->Server] Client disassociates with a room
+	TypeOperation = "operation" // [Client->Server] Client makes and operation
+	TypeState     = "state"     // [Client->Server] Client sends the full state to the server
+
+	TypeOperationUpdate  = "operationUpdate"  // [Server->Client] Server disseminates an operation to all Clients in a room
+	TypeRequestState     = "requestState"     // [Server->Client] Server asks a Client for the full state of the room
+	TypeClearState       = "clearState"       // [Server->Client] Server tells a Client to clear the current state
+	TypeNumMembersUpdate = "numMembersUpdate" // [Server->Client] Server tells a Client how many members are in the room
 )
 
 // Message is the superset of the object websocket clients send.
@@ -39,22 +42,22 @@ func dispatch(c *Client, b []byte) {
 
 	switch m.Type {
 	case TypeAnnounce:
-		Announce(c, m)
+		AnnounceHandler(c, m)
 	case TypeEnterRoom:
-		res := EnterRoom(c, m)
+		res := EnterRoomHandler(c, m)
 		c.Send(res)
 	case TypeExitRoom:
-		res := ExitRoom(c, m)
+		res := ExitRoomHandler(c, m)
 		c.Send(res)
 	case TypeOperation:
-		res, err := Operate(c, m)
+		res, err := OperationHandler(c, m)
 		if err != nil {
 			c.Send(err)
 			break
 		}
 		c.Room.Broadcast(res, c)
 	case TypeState:
-		State(c, m)
+		StateHandler(c, m)
 	default:
 		log.Warnf("message type \"%s\" not implemented", m.Type)
 	}

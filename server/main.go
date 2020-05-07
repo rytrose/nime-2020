@@ -17,9 +17,20 @@ var upgrader = websocket.Upgrader{}
 const projectID = "fir-test-9a9f3"
 
 func main() {
+	// Configure logging
 	loadLogging()
+
+	// Connect to db
+	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
+	database = NewDB(mongoConnectString)
+
+	// Connect to firestore
+	fs = NewFirestore()
+
+	// Create router
 	r := gin.Default()
 
+	// Establish profiling if desired
 	if os.Getenv("PPROF") == "1" {
 		pprof.Register(r)
 	}
@@ -39,13 +50,12 @@ func main() {
 	r.StaticFile("/a.js", "client/public/a.js")
 
 	r.GET("/nime", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "sequencer.html", nil);
+		c.HTML(http.StatusOK, "sequencer.html", nil)
 	})
 
 	r.GET("/nime/:id", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "sequencer.html", nil);
+		c.HTML(http.StatusOK, "sequencer.html", nil)
 	})
-
 
 	// Root app
 	r.GET("/", func(c *gin.Context) {
@@ -54,17 +64,37 @@ func main() {
 		})
 	})
 
+	// Admin routes
+	admin := r.Group("/admin")
+	admin.Use(func(c *gin.Context) {
+		adminKey := c.Request.Header.Get("X-Admin-Key")
+		if adminKey == "" {
+			c.String(http.StatusUnauthorized, "authorization header not present")
+			c.Abort()
+			return
+		}
+		if adminKey != os.Getenv("ADMIN_KEY") {
+			c.String(http.StatusUnauthorized, "authorization header invalid")
+			c.Abort()
+			return
+		}
+	})
+
+	// Delete room operations
+	admin.DELETE("rooms/:roomName/operations", func(c *gin.Context) {
+		roomName := c.Param("roomName")
+		err := database.DeleteAllOperations(roomName)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "unable to delete all operations: %s", err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
 	// Websocket handler
 	r.GET("/ws", func(c *gin.Context) {
 		wsHandler(c.Writer, c.Request)
 	})
-
-	// Connect to db
-	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
-	database = NewDB(mongoConnectString)
-
-	// Connect to firestore
-	fs = NewFirestore()
 
 	r.Run(":80")
 }
