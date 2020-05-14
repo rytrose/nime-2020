@@ -183,7 +183,7 @@ func (db *DB) GetRoom(roomName string) (*RoomDoc, error) {
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			// Look up room in firestore
-			roomDoc, err := fs.GetRoom(roomName)
+			roomDoc, err := fb.GetRoom(roomName)
 			if err != nil {
 				return nil, err
 			}
