@@ -7,11 +7,12 @@ let rooms = db.collection('rooms');
 
 let socket;
 let userDoc;
+let operationWaitUntil;
 
 // Once DOM is ready
 $(() => {
     // Sign in logic
-    $("#signInForm").submit((e) => {
+    $("#signInForm").submit(e => {
         e.preventDefault();
         let email = $("#signInEmail").val();
         let password = $("#signInPassword").val();
@@ -45,14 +46,14 @@ $(() => {
     });
 
     // Sign up logic
-    $("#signUpForm").submit((e) => {
+    $("#signUpForm").submit(e => {
         e.preventDefault();
         let email = $("#signUpEmail").val();
         let password = $("#signUpPassword").val();
         let displayName = $("#signUpDisplayName").val();
 
         auth.createUserWithEmailAndPassword(email, password)
-            .then((userCredential) => {
+            .then(userCredential => {
                 userCredential.user.updateProfile({
                     displayName: displayName
                 })
@@ -61,9 +62,9 @@ $(() => {
                         $("#user").text(`${userCredential.user.displayName} (${userCredential.user.email})`);
                         $("#content").show();
                     })
-                    .catch((e) => { console.log(error.message) });
+                    .catch(e => { console.log(error.message) });
             })
-            .catch((error) => {
+            .catch(error => {
                 switch (error.code) {
                     case "auth/email-already-in-use":
                         alert("Email already in use.");
@@ -79,7 +80,7 @@ $(() => {
                 }
             });
     });
-    $("#signUpLink").click((e) => {
+    $("#signUpLink").click(e => {
         e.preventDefault();
 
         $("#signIn").hide();
@@ -87,7 +88,7 @@ $(() => {
     });
 
     // Sign out logic
-    $("#signOut").click((e) => {
+    $("#signOut").click(e => {
         e.preventDefault();
 
         auth.signOut();
@@ -97,7 +98,7 @@ $(() => {
 });
 
 // Once logged in
-firebase.auth().onAuthStateChanged((user) => {
+firebase.auth().onAuthStateChanged(user => {
     if (user) {
         console.log("user signed in", user);
         $("#signIn").hide();
@@ -114,23 +115,31 @@ firebase.auth().onAuthStateChanged((user) => {
         socket = new Socket(`${location.host}/ws`);
 
         // Set up callbacks
-        socket.register("operationUpdate", (m) => {
+        socket.register("operationUpdate", m => {
             $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
         });
-        socket.register("clearState", (m) => {
+        socket.register("clearState", m => {
             $("#operations").empty();
         });
-        socket.register("numMembersUpdate", (m) => {
+        socket.register("numMembersUpdate", m => {
             $("#numMembers").text(m.numMembers);
         });
 
         // Announce this user 
         socket.addEventListener("open", () => {
-            socket.send({
+            socket.sendWithResponse({
                 "id": uuidv4(),
                 "type": "announce",
                 "userID": user.uid
-            });
+            })
+                .then(res => {
+                    if(res.error) {
+                        // Client already connected
+                        alert("You're already logged in in another tab.");
+                        $("#content").remove();
+                    }
+                })
+                .catch(error => console.log("unable to announce:", error));
         });
     } else {
         console.log("authStateChanged, no user signed in");
@@ -198,7 +207,7 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                             })
                         )
                     })
-                    .catch(e => console.log("unable to enter room:", e));
+                    .catch(error => console.log("unable to enter room:", error));
                 $("button[id$=_enter]").prop("disabled", true);
             })
         } else {

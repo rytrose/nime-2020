@@ -42,7 +42,8 @@ func dispatch(c *Client, b []byte) {
 
 	switch m.Type {
 	case TypeAnnounce:
-		AnnounceHandler(c, m)
+		res := AnnounceHandler(c, m)
+		c.Send(res)
 	case TypeEnterRoom:
 		res := EnterRoomHandler(c, m)
 		c.Send(res)

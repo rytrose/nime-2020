@@ -8,9 +8,32 @@ import (
 )
 
 // AnnounceHandler registers a user with a client connection.
-func AnnounceHandler(c *Client, m *Message) {
-	log.Debugf("user \"%s\" announced", m.UserID)
+func AnnounceHandler(c *Client, m *Message) bson.M {
+	ok := true
+	f := func(client *Client, _ bool) bool {
+		if client.UserID == m.UserID {
+			ok = false
+			return false
+		}
+		return true
+	}
+	clients.Range(f)
+
+	if !ok {
+		c.UserID = m.UserID
+		log.Warnf("(WARNING: multiple instances of the same user) user \"%s\" announced", m.UserID)
+		return bson.M{
+			"id":    m.ID,
+			"error": fmt.Sprintf("user %s already connected", m.UserID),
+		}
+	}
+
 	c.UserID = m.UserID
+	log.Debugf("user \"%s\" announced", m.UserID)
+
+	return bson.M{
+		"id": m.ID,
+	}
 }
 
 // EnterRoomHandler registers a client with a room.
