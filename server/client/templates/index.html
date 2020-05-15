@@ -18,15 +18,35 @@
 </head>
 
 <body>
-    <div id="loading" style="display: none;">Loading...</div>
-    <div id="firebaseui-auth-container"></div>
-    <div id="content" style="display: none;">
-        <button onclick="signOut()">Sign Out</button>
+    <div id="signIn" style="display: none;">
+        <form id="signInForm">
+            <label for="signInEmail">Email</label>
+            <input id="signInEmail" type="text" name="signInEmail">
+            <label for="signInPassword">Password</label>
+            <input id="signInPassword" type="password" name="signInPassword">
+            <input type="submit" value="Sign in">
+            <a id="signUpLink" href="#">Sign up</a>
+        </form>
+    </div>
+    <div id="signUp" style="display: none;">
+        <form id="signUpForm">
+            <label for="signUpEmail">Email</label>
+            <input id="signUpEmail" type="text" name="signUpEmail">
+            <label for="signUpDisplayName">Display Name</label>
+            <input id="signUpDisplayName" type="text" name="signUpDisplayName">
+            <label for="signUpPassword">Password</label>
+            <input id="signUpPassword" type="password" name="signUpPassword">
+            <input type="submit" value="Sign up">
+            <a id="signInLink" href="#">Sign in</a>
+        </form>
     </div>
 
-    <h1 id="welcome"></h1>
-    <div id="rooms"></div>
-    <div id="currentRoom"></div>
+    <div id="content" style="display: none;">
+        <button id="signOut">Sign out</button>
+        <h1 id="welcome">Welcome <span id="user"></span>!</h1>
+        <div id="rooms"></div>
+        <div id="currentRoom"></div>
+    </div>
 
     <!-- The core Firebase JS SDK is always required and must be listed first -->
     <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
