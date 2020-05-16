@@ -7,7 +7,7 @@ let rooms = db.collection('rooms');
 
 let socket;
 let userDoc;
-let operationWaitUntil;
+let lastOperation;
 
 // Once DOM is ready
 $(() => {
@@ -111,36 +111,50 @@ firebase.auth().onAuthStateChanged(user => {
         // Retain reference to user doc in firestore
         userDoc = users.doc(user.uid);
 
-        // Connect to server via websocket
-        socket = new Socket(`${location.host}/ws`);
-
-        // Set up callbacks
-        socket.register("operationUpdate", m => {
-            $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
-        });
-        socket.register("clearState", m => {
-            $("#operations").empty();
-        });
-        socket.register("numMembersUpdate", m => {
-            $("#numMembers").text(m.numMembers);
-        });
-
-        // Announce this user 
-        socket.addEventListener("open", () => {
-            socket.sendWithResponse({
-                "id": uuidv4(),
-                "type": "announce",
-                "userID": user.uid
+        // Get user doc info
+        userDoc.get()
+            .then(docSnapshot => {
+                let data = docSnapshot.data();
+                if (data) {
+                    lastOperation = data.lastOperation;
+                }
             })
-                .then(res => {
-                    if(res.error) {
-                        // Client already connected
-                        alert("You're already logged in in another tab.");
-                        $("#content").remove();
-                    }
+            .catch(e => {
+                console.log(`unable to get user doc info: ${e.message}`);
+            });
+
+        if (!socket) {
+            // Connect to server via websocket
+            socket = new Socket(`${location.host}/ws`);
+
+            // Set up callbacks
+            socket.register("operationUpdate", m => {
+                $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
+            });
+            socket.register("clearState", m => {
+                $("#operations").empty();
+            });
+            socket.register("numMembersUpdate", m => {
+                $("#numMembers").text(m.numMembers);
+            });
+
+            // Announce this user
+            socket.addEventListener("open", () => {
+                socket.sendWithResponse({
+                    "id": uuidv4(),
+                    "type": "announce",
+                    "userID": user.uid
                 })
-                .catch(error => console.log("unable to announce:", error));
-        });
+                    .then(res => {
+                        if(res.error) {
+                            // Client already connected
+                            alert("You're already logged in in another tab.");
+                            $("#content").remove();
+                        }
+                    })
+                    .catch(error => console.log("unable to announce:", error));
+            });
+        }
     } else {
         console.log("authStateChanged, no user signed in");
         $("#signIn").show();
@@ -182,16 +196,33 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                             $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
                         }
                         $("#operate").click(() => {
+                            console.log("click!");
+                            if (lastOperation) {
+                                if (Date.now() < lastOperation + roomData.submitTimeout) {
+                                    alert("cannot operate again yet!");
+                                    return;
+                                }
+                            }
+
                             let operation = {
                                 "operationType": "foo",
                                 "data": Math.random()
                             };
-                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
+                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`);
                             socket.send({
                                 "type": "operation",
                                 "roomName": roomName,
                                 "operation": operation
                             });
+
+                            // Update last operation timestamp
+                            lastOperation = Date.now();
+                            userDoc.set({
+                                lastOperation: lastOperation
+                            })
+                                .catch(e => {
+                                    console.log(`unable to update lastOperation timestamp: ${e.message}`);
+                                });
                         });
                         $("#exitRoom").click(() => socket.sendWithResponse({
                                 "id": uuidv4(),
