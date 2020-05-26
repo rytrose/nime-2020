@@ -18,31 +18,19 @@
 </head>
 
 <body>
-    <div id="signIn" style="display: none;">
-        <form id="signInForm">
-            <label for="signInEmail">Email</label>
-            <input id="signInEmail" type="text" name="signInEmail">
-            <label for="signInPassword">Password</label>
-            <input id="signInPassword" type="password" name="signInPassword">
-            <input type="submit" value="Sign in">
-            <a id="signUpLink" href="#">Sign up</a>
-        </form>
+    <div id="loading">
+        <p>Loading...</p>
     </div>
-    <div id="signUp" style="display: none;">
-        <form id="signUpForm">
-            <label for="signUpEmail">Email</label>
-            <input id="signUpEmail" type="text" name="signUpEmail">
-            <label for="signUpDisplayName">Display Name</label>
-            <input id="signUpDisplayName" type="text" name="signUpDisplayName">
-            <label for="signUpPassword">Password</label>
-            <input id="signUpPassword" type="password" name="signUpPassword">
-            <input type="submit" value="Sign up">
-            <a id="signInLink" href="#">Sign in</a>
+
+    <div id="setDisplayName" style="display: none;">
+        <form id="displayNameForm">
+            <label for="displayName">Display Name</label>
+            <input id="displayName" type="text" name="displayName">
+            <input type="submit" value="Enter">
         </form>
     </div>
 
     <div id="content" style="display: none;">
-        <button id="signOut">Sign out</button>
         <h1 id="welcome">Welcome <span id="user"></span>!</h1>
         <div id="rooms"></div>
         <div id="currentRoom"></div>

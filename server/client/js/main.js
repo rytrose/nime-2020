@@ -11,89 +11,22 @@ let lastOperation;
 
 // Once DOM is ready
 $(() => {
-    // Sign in logic
-    $("#signInForm").submit(e => {
+    // Set display name logic
+    $("#displayNameForm").submit(e => {
         e.preventDefault();
-        let email = $("#signInEmail").val();
-        let password = $("#signInPassword").val();
-        auth.signInWithEmailAndPassword(email, password)
-            .catch((error) => {
-                switch (error.code) {
-                    case "auth/invalid-email":
-                        alert("Invalid email.");
-                        break;
-                    case "auth/user-disabled":
-                        alert("User disabled.");
-                        break;
-                    case "auth/user-not-found":
-                        $("#signUpEmail").val(email);
-                        $("#signUpPassword").val(password);
-                        $("#signIn").hide();
-                        $("#signUp").show();
-                        break;
-                    case "auth/wrong-password":
-                        alert("Incorrect password.");
-                        break;
-                    default:
-                        alert(error.message);
-                }
-            });
-    });
-    $("#signInLink").click(() => {
-        $("#signUp").hide();
-        $("#signIn").show();
-
-    });
-
-    // Sign up logic
-    $("#signUpForm").submit(e => {
-        e.preventDefault();
-        let email = $("#signUpEmail").val();
-        let password = $("#signUpPassword").val();
-        let displayName = $("#signUpDisplayName").val();
-
-        auth.createUserWithEmailAndPassword(email, password)
-            .then(userCredential => {
-                userCredential.user.updateProfile({
-                    displayName: displayName
-                })
-                    .then(() => { 
-                        console.log("successfully set display name");
-                        $("#user").text(`${userCredential.user.displayName} (${userCredential.user.email})`);
-                        $("#content").show();
-                    })
-                    .catch(e => { console.log(error.message) });
+        let user = auth.currentUser;
+        if (!user) return;
+        let displayName = $("#displayName").val();
+        user.updateProfile({
+            displayName: displayName
+        })
+            .then(() => {
+                console.log("successfully set display name");
+                $("#user").text(user.displayName);
+                $("#setDisplayName").hide();
+                $("#content").show();
             })
-            .catch(error => {
-                switch (error.code) {
-                    case "auth/email-already-in-use":
-                        alert("Email already in use.");
-                        break;
-                    case "auth/invalid-email":
-                        alert("Invalid email.");
-                        break;
-                    case "auth/weak-password":
-                        alert("Password too weak.");
-                        break;
-                    default:
-                        alert(error.message);
-                }
-            });
-    });
-    $("#signUpLink").click(e => {
-        e.preventDefault();
-
-        $("#signIn").hide();
-        $("#signUp").show();
-    });
-
-    // Sign out logic
-    $("#signOut").click(e => {
-        e.preventDefault();
-
-        auth.signOut();
-        $("#content").hide();
-        $("#signIn").show();
+            .catch(error => console.log(error.message));
     });
 });
 
@@ -101,11 +34,13 @@ $(() => {
 firebase.auth().onAuthStateChanged(user => {
     if (user) {
         console.log("user signed in", user);
-        $("#signIn").hide();
-        $("#signUp").hide();
         if (user.displayName) {
-            $("#user").text(`${user.displayName} (${user.email})`);
+            $("#loading").hide();
+            $("#user").text(`${user.displayName}`);
             $("#content").show();
+        } else {
+            $("#loading").hide();
+            $("#setDisplayName").show();
         }
 
         // Retain reference to user doc in firestore
@@ -156,13 +91,15 @@ firebase.auth().onAuthStateChanged(user => {
             });
         }
     } else {
-        console.log("authStateChanged, no user signed in");
-        $("#signIn").show();
+        console.log("no user signed in, creating user");
+        firebase.auth().signInAnonymously().catch(error => console.log("error signing in anonymously:", error));
+        $("#loading").hide();
+        $("#setDisplayName").show();
     }
 });
 
 // Sync rooms
-rooms.where('active', '==', true).onSnapshot((snapshot) => {
+rooms.where('active', '==', true).onSnapshot(snapshot => {
     if (!snapshot.size) console.log("No rooms.");
 
     snapshot.docChanges().forEach(function (change) {
