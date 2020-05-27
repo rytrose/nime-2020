@@ -7,7 +7,8 @@ let rooms = db.collection('rooms');
 
 let socket;
 let userDoc;
-let lastOperation;
+let lastOperationsCol;
+let lastOperations = {};
 
 // Once DOM is ready
 $(() => {
@@ -45,13 +46,14 @@ firebase.auth().onAuthStateChanged(user => {
 
         // Retain reference to user doc in firestore
         userDoc = users.doc(user.uid);
+        lastOperationsCol = userDoc.collection("lastOperations");
 
-        // Get user doc info
-        userDoc.get()
-            .then(docSnapshot => {
-                let data = docSnapshot.data();
-                if (data) {
-                    lastOperation = data.lastOperation;
+        // Get lastOperations timestamps
+        lastOperationsCol.get()
+            .then(querySnapshot => {
+                for (let docSnapshot of querySnapshot.docs) {
+                    let data = docSnapshot.data();
+                    lastOperations[docSnapshot.id] = data.lastOperation;
                 }
             })
             .catch(e => {
@@ -133,9 +135,8 @@ rooms.where('active', '==', true).onSnapshot(snapshot => {
                             $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
                         }
                         $("#operate").click(() => {
-                            console.log("click!");
-                            if (lastOperation) {
-                                if (Date.now() < lastOperation + roomData.submitTimeout) {
+                            if (lastOperations[roomName]) {
+                                if (Date.now() < lastOperations[roomName] + roomData.submitTimeout) {
                                     alert("cannot operate again yet!");
                                     return;
                                 }
@@ -153,9 +154,9 @@ rooms.where('active', '==', true).onSnapshot(snapshot => {
                             });
 
                             // Update last operation timestamp
-                            lastOperation = Date.now();
-                            userDoc.set({
-                                lastOperation: lastOperation
+                            lastOperations[roomName] = Date.now();
+                            lastOperationsCol.doc(roomName).set({
+                                lastOperation: lastOperations[roomName]
                             })
                                 .catch(e => {
                                     console.log(`unable to update lastOperation timestamp: ${e.message}`);
