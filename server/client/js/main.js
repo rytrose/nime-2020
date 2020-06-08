@@ -6,69 +6,102 @@ let users = db.collection('users');
 let rooms = db.collection('rooms');
 
 let socket;
+let userDoc;
+let lastOperationsCol;
+let lastOperations = {};
 
-
-// Create ephemeral user
-firebase.auth().signInAnonymously().catch((error) => {
-    console.log("error signing in anonymously:", error);
+// Once DOM is ready
+$(() => {
+    // Set display name logic
+    $("#displayNameForm").submit(e => {
+        e.preventDefault();
+        let user = auth.currentUser;
+        if (!user) return;
+        let displayName = $("#displayName").val();
+        user.updateProfile({
+            displayName: displayName
+        })
+            .then(() => {
+                console.log("successfully set display name");
+                $("#user").text(user.displayName);
+                $("#setDisplayName").hide();
+                $("#content").show();
+            })
+            .catch(error => console.log(error.message));
+    });
 });
 
 // Once logged in
-firebase.auth().onAuthStateChanged((user) => {
+firebase.auth().onAuthStateChanged(user => {
     if (user) {
-        // Add user to firestore
-        users.add({}).then((userDoc) => {
-            let userID = userDoc.id;
-            $("#welcome").html(`Welcome, ${userID}!`);
-            console.log("added user");
+        console.log("user signed in", user);
+        if (user.displayName) {
+            $("#loading").hide();
+            $("#user").text(`${user.displayName}`);
+            $("#content").show();
+        } else {
+            $("#loading").hide();
+            $("#setDisplayName").show();
+        }
 
-            // Set RTDB online key
-            let presenceRef = rtdb.ref(`/status/${userID}`)
-            presenceRef.set('online').then(() => {
-                console.log("added user presence ref");
-            }).catch((error) => {
-                console.log("error adding user presence ref:", error);
-            });
-            
-            // On RTDB set offline for deletion from firestore
-            $(window).on('beforeunload', (e) => {
-                presenceRef.set('offline')
-                    .then(() => console.log("set user offline"))
-                    .catch((error) => console.error("unable to set user offline:", error));
-                e.returnValue = "";
-                return "";
+        // Retain reference to user doc in firestore
+        userDoc = users.doc(user.uid);
+        lastOperationsCol = userDoc.collection("lastOperations");
+
+        // Get lastOperations timestamps
+        lastOperationsCol.get()
+            .then(querySnapshot => {
+                for (let docSnapshot of querySnapshot.docs) {
+                    let data = docSnapshot.data();
+                    lastOperations[docSnapshot.id] = data.lastOperation;
+                }
+            })
+            .catch(e => {
+                console.log(`unable to get user doc info: ${e.message}`);
             });
 
+        if (!socket) {
             // Connect to server via websocket
             socket = new Socket(`${location.host}/ws`);
 
             // Set up callbacks
-            socket.register("operationUpdate", (m) => {
+            socket.register("operationUpdate", m => {
                 $("#operations").append(`<p>${JSON.stringify(m.operation)}</p>`);
             });
-            socket.register("clearState", (m) => {
+            socket.register("clearState", m => {
                 $("#operations").empty();
             });
-            socket.register("numMembersUpdate", (m) => {
+            socket.register("numMembersUpdate", m => {
                 $("#numMembers").text(m.numMembers);
             });
 
-            // Announce this user 
+            // Announce this user
             socket.addEventListener("open", () => {
-                socket.send({
+                socket.sendWithResponse({
                     "id": uuidv4(),
                     "type": "announce",
-                    "userID": userID
-                });
+                    "userID": user.uid
+                })
+                    .then(res => {
+                        if(res.error) {
+                            // Client already connected
+                            alert("You're already logged in in another tab.");
+                            $("#content").remove();
+                        }
+                    })
+                    .catch(error => console.log("unable to announce:", error));
             });
-        }).catch((error) => {
-            console.log("error adding user:", error);
-        });
+        }
+    } else {
+        console.log("no user signed in, creating user");
+        firebase.auth().signInAnonymously().catch(error => console.log("error signing in anonymously:", error));
+        $("#loading").hide();
+        $("#setDisplayName").show();
     }
 });
 
 // Sync rooms
-rooms.where('active', '==', true).onSnapshot((snapshot) => {
+rooms.where('active', '==', true).onSnapshot(snapshot => {
     if (!snapshot.size) console.log("No rooms.");
 
     snapshot.docChanges().forEach(function (change) {
@@ -102,16 +135,32 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                             $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
                         }
                         $("#operate").click(() => {
+                            if (lastOperations[roomName]) {
+                                if (Date.now() < lastOperations[roomName] + roomData.submitTimeout) {
+                                    alert("cannot operate again yet!");
+                                    return;
+                                }
+                            }
+
                             let operation = {
                                 "operationType": "foo",
                                 "data": Math.random()
                             };
-                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`)
+                            $("#operations").append(`<p>${JSON.stringify(operation)}</p>`);
                             socket.send({
                                 "type": "operation",
                                 "roomName": roomName,
                                 "operation": operation
                             });
+
+                            // Update last operation timestamp
+                            lastOperations[roomName] = Date.now();
+                            lastOperationsCol.doc(roomName).set({
+                                lastOperation: lastOperations[roomName]
+                            })
+                                .catch(e => {
+                                    console.log(`unable to update lastOperation timestamp: ${e.message}`);
+                                });
                         });
                         $("#exitRoom").click(() => socket.sendWithResponse({
                                 "id": uuidv4(),
@@ -127,7 +176,7 @@ rooms.where('active', '==', true).onSnapshot((snapshot) => {
                             })
                         )
                     })
-                    .catch(e => console.log("unable to enter room:", e));
+                    .catch(error => console.log("unable to enter room:", error));
                 $("button[id$=_enter]").prop("disabled", true);
             })
         } else {

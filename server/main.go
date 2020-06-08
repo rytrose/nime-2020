@@ -24,8 +24,8 @@ func main() {
 	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
 	database = NewDB(mongoConnectString)
 
-	// Connect to firestore
-	fs = NewFirestore()
+	// Connect to firebase
+	fb = NewFirebase()
 
 	// Create router
 	r := gin.Default()
@@ -86,6 +86,16 @@ func main() {
 		err := database.DeleteAllOperations(roomName)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "unable to delete all operations: %s", err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	// Delete all firebase users
+	admin.DELETE("firebase/users", func(c *gin.Context) {
+		err := fb.DeleteAllUsers()
+		if err != nil {
+			c.String(http.StatusInternalServerError, "unable to delete all users: %s", err)
 			return
 		}
 		c.Status(http.StatusNoContent)

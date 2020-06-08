@@ -30,6 +30,38 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Delete all Firebase Users",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-Admin-Key",
+						"value": "{{ADMIN_KEY}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{HOSTNAME}}/admin/firebase/users",
+					"host": [
+						"{{HOSTNAME}}"
+					],
+					"path": [
+						"admin",
+						"firebase",
+						"users"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
 		}
 	],
 	"protocolProfileBehavior": {}

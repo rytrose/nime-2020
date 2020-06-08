@@ -12,12 +12,29 @@
     <meta name="msapplication-tap-highlight" content="no">
     <link rel="icon" href="images/favicon.ico">
 
+    <!-- FirebaseUI -->
+    <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
 </head>
 
 <body>
-    <h1 id="welcome"></h1>
-    <div id="rooms"></div>
-    <div id="currentRoom"></div>
+    <div id="loading">
+        <p>Loading...</p>
+    </div>
+
+    <div id="setDisplayName" style="display: none;">
+        <form id="displayNameForm">
+            <label for="displayName">Display Name</label>
+            <input id="displayName" type="text" name="displayName">
+            <input type="submit" value="Enter">
+        </form>
+    </div>
+
+    <div id="content" style="display: none;">
+        <h1 id="welcome">Welcome <span id="user"></span>!</h1>
+        <div id="rooms"></div>
+        <div id="currentRoom"></div>
+    </div>
 
     <!-- The core Firebase JS SDK is always required and must be listed first -->
     <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
