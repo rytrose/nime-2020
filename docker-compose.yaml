@@ -15,6 +15,7 @@ services:
       - ./server:/app
     command: watcher
     environment:
+      ENV: local
       LOG_LEVEL: DEBUG
       MONGO_CONNECTION_URL: mongodb://mongo:27017
       PPROF: 1

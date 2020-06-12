@@ -102,6 +102,11 @@ func main() {
 	})
 
 	// Websocket handler
+	if env := os.Getenv("ENV"); env == "local" {
+		upgrader.CheckOrigin = func(r *http.Request) bool {
+			return true
+		}
+	}
 	r.GET("/ws", func(c *gin.Context) {
 		wsHandler(c.Writer, c.Request)
 	})
