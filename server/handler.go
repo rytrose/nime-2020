@@ -148,22 +148,22 @@ func ExitRoomHandler(c *Client, m *Message) bson.M {
 	}
 }
 
-// OperationHandler commits an operation to a room.
-func OperationHandler(c *Client, m *Message) (bson.M, bson.M) {
+// OperationsHandler commits operations to a room.
+func OperationsHandler(c *Client, m *Message) (bson.M, bson.M) {
 	if c.Room == nil {
 		return nil, bson.M{
-			"error": fmt.Sprintf("user %s is not in a room to commit an operation", c.UserID),
+			"error": fmt.Sprintf("user %s is not in a room to commit operations", c.UserID),
 		}
 	}
-	doc, err := database.CommitOperation(c.Room.RoomName, m.Operation)
+	ops, err := database.CommitOperations(c.Room.RoomName, m.Operations)
 	if err != nil {
 		return nil, bson.M{
 			"error": fmt.Sprintf("unable to commit operation: %s", err),
 		}
 	}
 	return bson.M{
-		"type":      TypeOperationUpdate,
-		"operation": doc.Ops[len(doc.Ops)-1],
+		"type":       TypeOperationsUpdate,
+		"operations": ops,
 	}, nil
 }
 

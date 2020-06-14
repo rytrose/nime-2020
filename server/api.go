@@ -9,13 +9,13 @@ import (
 
 // Message types
 const (
-	TypeAnnounce  = "announce"  // [Client->Server] Provides a user ID to the client
-	TypeEnterRoom = "enterRoom" // [Client->Server] Client associates with a room, and requests the current state
-	TypeExitRoom  = "exitRoom"  // [Client->Server] Client disassociates with a room
-	TypeOperation = "operation" // [Client->Server] Client makes and operation
-	TypeState     = "state"     // [Client->Server] Client sends the full state to the server
+	TypeAnnounce   = "announce"   // [Client->Server] Provides a user ID to the client
+	TypeEnterRoom  = "enterRoom"  // [Client->Server] Client associates with a room, and requests the current state
+	TypeExitRoom   = "exitRoom"   // [Client->Server] Client disassociates with a room
+	TypeOperations = "operations" // [Client->Server] Client makes submits operations
+	TypeState      = "state"      // [Client->Server] Client sends the full state to the server
 
-	TypeOperationUpdate  = "operationUpdate"  // [Server->Client] Server disseminates an operation to all Clients in a room
+	TypeOperationsUpdate = "operationsUpdate" // [Server->Client] Server disseminates operations to all Clients in a room
 	TypeRequestState     = "requestState"     // [Server->Client] Server asks a Client for the full state of the room
 	TypeClearState       = "clearState"       // [Server->Client] Server tells a Client to clear the current state
 	TypeNumMembersUpdate = "numMembersUpdate" // [Server->Client] Server tells a Client how many members are in the room
@@ -23,13 +23,13 @@ const (
 
 // Message is the superset of the object websocket clients send.
 type Message struct {
-	ID            string `json:"id"`
-	Type          string `json:"type"`
-	UserID        string `json:"userID"`
-	RoomName      string `json:"roomName"`
-	OperationType string `json:"operationType"`
-	Operation     bson.M `json:"operation"`
-	State         bson.M `json:"state"`
+	ID            string   `json:"id"`
+	Type          string   `json:"type"`
+	UserID        string   `json:"userID"`
+	RoomName      string   `json:"roomName"`
+	OperationType string   `json:"operationType"`
+	Operations    []bson.M `json:"operations"`
+	State         bson.M   `json:"state"`
 }
 
 // dispatch fans out different types of messages from websocket clients.
@@ -50,8 +50,8 @@ func dispatch(c *Client, b []byte) {
 	case TypeExitRoom:
 		res := ExitRoomHandler(c, m)
 		c.Send(res)
-	case TypeOperation:
-		res, err := OperationHandler(c, m)
+	case TypeOperations:
+		res, err := OperationsHandler(c, m)
 		if err != nil {
 			c.Send(err)
 			break

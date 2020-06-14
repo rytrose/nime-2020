@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -17,6 +18,7 @@ import (
 const (
 	DBTimeoutConnect = 10
 	DBTimeoutOp      = 2
+	MaxOpsPerBucket  = 100
 )
 
 // database is the common reference to mongo
@@ -29,6 +31,7 @@ type DB struct {
 	roomCol             *mongo.Collection
 	operationBucketsCol *mongo.Collection
 	maxOpsPerBucket     int
+	writeMutex          sync.Mutex
 }
 
 // RoomDoc is a document that stores metadata about a room.
@@ -74,7 +77,7 @@ func NewDB(uri string) *DB {
 		db:                  db,
 		roomCol:             roomCol,
 		operationBucketsCol: operationBucketsCol,
-		maxOpsPerBucket:     100,
+		maxOpsPerBucket:     MaxOpsPerBucket,
 	}
 
 	// Ensure indicies
@@ -224,24 +227,22 @@ func (db *DB) UpdateRoomNumMembers(roomName string, updateIncrement int) (*RoomD
 	return roomDoc, nil
 }
 
-// CommitOperation stores an operation committed in a room.
-func (db *DB) CommitOperation(roomName string, op bson.M) (*OpBucketDoc, error) {
-	room, err := db.GetRoom(roomName)
-
+// commitOperation stores an operation committed in a room.
+func (db *DB) commitOperation(roomDoc *RoomDoc, op bson.M) (*OpBucketDoc, error) {
 	ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
-	query := bson.M{"room_name": room.RoomName, "bucket": room.NumBuckets}
+	query := bson.M{"room_name": roomDoc.RoomName, "bucket": roomDoc.NumBuckets}
 	operation := bson.M{"$inc": bson.M{"count": 1}, "$push": bson.M{"operations": op}}
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(true)
 
 	opBucket := &OpBucketDoc{}
-	err = db.operationBucketsCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(opBucket)
+	err := db.operationBucketsCol.FindOneAndUpdate(ctx, query, operation, opts).Decode(opBucket)
 	if err != nil {
 		return nil, fmt.Errorf("database update op bucket with op error: %s", err)
 	}
 
 	if opBucket.Count == db.maxOpsPerBucket {
 		ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
-		query := bson.M{"_id": room.ID, "num_buckets": room.NumBuckets}
+		query := bson.M{"_id": roomDoc.ID, "num_buckets": roomDoc.NumBuckets}
 		update := bson.M{"$inc": bson.M{"num_buckets": 1}}
 
 		_, err = db.roomCol.UpdateOne(ctx, query, update)
@@ -251,6 +252,28 @@ func (db *DB) CommitOperation(roomName string, op bson.M) (*OpBucketDoc, error) 
 	}
 
 	return opBucket, nil
+}
+
+// CommitOperations writes operations committed in a room.
+func (db *DB) CommitOperations(roomName string, ops []bson.M) ([]bson.M, error) {
+	room, err := db.GetRoom(roomName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get room: %w", err)
+	}
+
+	// Ensure all operations submitted together are written together
+	db.writeMutex.Lock()
+	defer db.writeMutex.Unlock()
+
+	// Commit all operations
+	for _, op := range ops {
+		_, err := db.commitOperation(room, op)
+		if err != nil {
+			return nil, fmt.Errorf("unable to commit operation: %w", err)
+		}
+	}
+
+	return ops, nil
 }
 
 // GetAllOperations returns the full history of operations for a given room.
