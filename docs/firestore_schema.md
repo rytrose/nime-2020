@@ -35,6 +35,7 @@ Each document in `rooms` uses the room name as the ID, and contains the followin
 |------------------|---------|----------------------------------------------------------------------------------------------------|-------------|
 | `active`         | boolean | Flag for whether or not this room should be shown to users.                                        |             |
 | `type`           | string  | An enumeration for the type of interface the room presents to the user.                            | `PIANO_ROLL_SEQUENCER` |
+| `hash`           | string  | The hash used to load the necessary assets for the room.                                           |             |
 | `description`    | string  | User facing description of the room.                                                               |             |
 | `actionsAllowed` | number  | The number of actions a user can take in this room before submitting and waiting `actionWaitTime`. |             |
 | `actionWaitTime` | number  | The duration in milliseconds between action submissions a user must wait.                          |             |
@@ -52,7 +53,7 @@ The following describes the `ruleParams` for each `ruleType`:
 | `ruleType`       | Property       | Type          | Description                                                    |
 |------------------|----------------|---------------|----------------------------------------------------------------|
 | `STEPS_DISABLED` | `steps`        | array[number] | An array of step indices to disable.                           |
-| `NOTES_DISABLED` | `notes`        | array[number] | An array of MIDI note numbers to disable.                      |
+| `NOTES_DISABLED` | `notes`        | array[string] | An array of note names to disable (e.g. "C4", "A#2").          |
 | `KNOBS_DISABLED` | `knobs`        | array[string] | An array of knob IDs to disable.                               |
 | `KNOBS_MIN_MAX`  | `knobs`        | array[object] | An array of objects describing knob labels and min/max values. |
 |                  | `knobs[i].id`  | string        | The knob ID this refers to.                                    |
