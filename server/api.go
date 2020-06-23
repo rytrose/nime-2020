@@ -56,7 +56,7 @@ func dispatch(c *Client, b []byte) {
 			c.Send(err)
 			break
 		}
-		c.Room.Broadcast(res, c)
+		c.Room.Broadcast(res, c) // Ignore client committing operations
 	case TypeState:
 		StateHandler(c, m)
 	default:

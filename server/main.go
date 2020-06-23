@@ -39,6 +39,8 @@ func main() {
 	r.LoadHTMLFiles("client/public/sequencer.html", "client/templates/index.html")
 	r.Static("/js", "client/js")
 	r.Static("/public", "client/public")
+	r.Static("/static", "client/public/static")
+	r.Static("/fonts", "client/public/fonts")
 	r.StaticFile("/aubio.wasm", "client/public/aubio.wasm")
 	r.StaticFile("/aubio.js", "client/public/aubio.js")
 	r.StaticFile("/a.wasm", "client/public/a.wasm")
@@ -46,8 +48,12 @@ func main() {
 	r.StaticFile("/automation-icon-enabled.png", "client/public/automation-icon-enabled.png")
 	r.StaticFile("/arrow-loop.png", "client/public/arrow-loop.png")
 	r.StaticFile("/arrow-loop-looping.png", "client/public/arrow-loop-looping.png")
+	r.StaticFile("/piano-icon.png", "client/public/piano-icon.png")
 	r.StaticFile("/service-worker.js", "client/public/service-worker.js")
 	r.StaticFile("/a.js", "client/public/a.js")
+	r.StaticFile("/a.out.js", "client/public/a.out.js")
+	r.StaticFile("/a.out.wasm", "client/public/a.out.wasm")
+	r.StaticFile("/convolver/PrimeXtraLong.wav", "client/public/convolver/PrimeXtraLong.wav")
 
 	r.GET("/nime", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "sequencer.html", nil)

@@ -36,6 +36,7 @@ Each document in `rooms` uses the room name as the ID, and contains the followin
 | `active`         | boolean | Flag for whether or not this room should be shown to users.                                        |             |
 | `type`           | string  | An enumeration for the type of interface the room presents to the user.                            | `PIANO_ROLL_SEQUENCER` |
 | `hash`           | string  | The hash used to load the necessary assets for the room.                                           |             |
+| `thumbnail`      | string  | A URL to an image to use on the landing page representing the room.                                |             |
 | `description`    | string  | User facing description of the room.                                                               |             |
 | `actionsAllowed` | number  | The number of actions a user can take in this room before submitting and waiting `actionWaitTime`. |             |
 | `actionWaitTime` | number  | The duration in milliseconds between action submissions a user must wait.                          |             |
