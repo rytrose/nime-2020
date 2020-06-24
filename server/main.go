@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/pprof"
 
@@ -107,6 +108,27 @@ func main() {
 		c.Status(http.StatusNoContent)
 	})
 
+	// Turn on/off websocket CORS
+	admin.POST("websocket/cors", func(c *gin.Context) {
+		// Look for "enforce" query param
+		enforceParam, ok := c.Request.URL.Query()["enforce"]
+		if !ok {
+			c.String(http.StatusBadRequest, "missing query param \"enforce\"")
+			return
+		}
+		enforce := enforceParam[0]
+		if strings.ToLower(enforce) == "false" {
+			log.Infof("disabling CORS for websocket connections")
+			upgrader.CheckOrigin = func(r *http.Request) bool {
+				return true
+			}
+		} else {
+			log.Infof("enabling CORS for websocket connections")
+			upgrader.CheckOrigin = nil
+		}
+		c.Status(http.StatusAccepted)
+	})
+
 	// Websocket handler
 	if env := os.Getenv("ENV"); env == "local" {
 		upgrader.CheckOrigin = func(r *http.Request) bool {
@@ -123,7 +145,8 @@ func main() {
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatalf("Unable to upgrade ws request: %s", err)
+		log.Errorf("Unable to upgrade ws request: %s", err)
+		return
 	}
 	NewClient(conn)
 }

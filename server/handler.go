@@ -162,8 +162,9 @@ func OperationsHandler(c *Client, m *Message) (bson.M, bson.M) {
 		}
 	}
 	return bson.M{
-		"type":       TypeOperationsUpdate,
-		"operations": ops,
+		"type":        TypeOperationsUpdate,
+		"operations":  ops,
+		"messageTime": m.MessageTime,
 	}, nil
 }
 

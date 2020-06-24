@@ -30,6 +30,7 @@ type Message struct {
 	OperationType string   `json:"operationType"`
 	Operations    []bson.M `json:"operations"`
 	State         bson.M   `json:"state"`
+	MessageTime   float64  `json:"messageTime"`
 }
 
 // dispatch fans out different types of messages from websocket clients.
