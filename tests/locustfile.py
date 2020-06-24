@@ -14,8 +14,9 @@ from locust import HttpUser, TaskSet, task, between, events
 # HOSTNAME = "localhost:8000"
 HOSTNAME = "nime2020.rytrose.com"
 
-@events.init.add_listener
-def init_locust(environment, **kwargs):
+
+@events.test_start.add_listener
+def test_start(environment, **kwargs):
     print("Turning off websocket CORS")
     admin_key = os.environ.get("ADMIN_KEY")
     if admin_key == None or admin_key == "":
@@ -27,8 +28,8 @@ def init_locust(environment, **kwargs):
         sys.exit("Unable to turn off websocket CORS enforcement")
 
 
-@events.quitting.add_listener
-def quit_locust(environment):
+@events.test_stop.add_listener
+def test_stop(environment):
     print("Turning on websocket CORS")
     admin_key = os.environ.get("ADMIN_KEY")
     if admin_key == None or admin_key == "":
