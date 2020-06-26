@@ -106,4 +106,4 @@ class CommitOperationTaskSet(TaskSet):
 
 class OperationsLocust(HttpUser):
     tasks = [CommitOperationTaskSet]
-    wait_time = between(1, 2)
+    wait_time = between(5, 20)

@@ -34,6 +34,9 @@ type Client struct {
 	// Buffered channel of outbound messages.
 	send chan interface{}
 
+	// Flag for whether the send chan is open
+	sendOpen bool
+
 	// Channel to wait on for full state update.
 	stateUpdate chan bson.M
 }
@@ -47,6 +50,7 @@ func NewClient(conn *websocket.Conn) *Client {
 		conn:        conn,
 		chanTimeout: 500,
 		send:        make(chan interface{}),
+		sendOpen:    true,
 		stateUpdate: make(chan bson.M),
 	}
 	go c.reader()
@@ -55,35 +59,46 @@ func NewClient(conn *websocket.Conn) *Client {
 	return c
 }
 
-// Close frees up the websocket and removes from memory.
+// Close frees up the websocket and removes it from memory.
 func (c *Client) Close() {
 	log.Infof("closing connection %s", c.connID)
-	c.conn.Close()
+
+	// Close send chan
+	if c.sendOpen {
+		c.sendOpen = false
+		close(c.send)
+	}
+
+	// Clean up room presence
 	if c.Room != nil {
 		// Decrement room num_members
 		doc, err := database.UpdateRoomNumMembers(c.Room.RoomName, -1)
 		if err != nil {
-			log.Errorf("[DATA OUT OF SYNC] unable to decrement num_members for room %s", c.Room.RoomName)
+			log.Errorf("[DATA OUT OF SYNC] unable to decrement num_members for room %s: %s", c.Room.RoomName, err)
+		} else {
+			// Update clients with num_members
+			c.Room.Broadcast(bson.M{
+				"type":       TypeNumMembersUpdate,
+				"numMembers": doc.NumMembers,
+			}, c)
 		}
-
-		// Update clients with num_members
-		c.Room.Broadcast(bson.M{
-			"type":       TypeNumMembersUpdate,
-			"numMembers": doc.NumMembers,
-		}, c)
 		c.Room.Members.Delete(c)
+		c.Room = nil
 	}
 	clients.Delete(c)
 }
 
 // Send sends a message to the connected websocket client.
 func (c *Client) Send(v interface{}) error {
-	select {
-	case c.send <- v:
-		return nil
-	case <-time.After(time.Duration(c.chanTimeout) * time.Millisecond):
-		return fmt.Errorf("unable to send message (send channel timeout)")
+	if c.sendOpen {
+		select {
+		case c.send <- v:
+			return nil
+		case <-time.After(time.Duration(c.chanTimeout) * time.Millisecond):
+			return fmt.Errorf("unable to send message (send channel timeout)")
+		}
 	}
+	return fmt.Errorf("attempted send on closed send channel")
 }
 
 // WaitForState waits for the full state to be provided to the client from another.
@@ -143,7 +158,7 @@ func (c *Client) writer() {
 		err := c.conn.WriteJSON(m)
 		if err != nil {
 			if err == websocket.ErrCloseSent {
-				log.Errorf("error writing message: %s", err)
+				// Don't log error on closed channel
 			}
 			log.Errorf("error writing message: %s", err)
 		}

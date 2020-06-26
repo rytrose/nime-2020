@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO: consider specifying buffer sizes
 var upgrader = websocket.Upgrader{}
 
 const projectID = "fir-test-9a9f3"
