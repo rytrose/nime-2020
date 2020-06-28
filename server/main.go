@@ -44,6 +44,7 @@ func main() {
 	r.Static("/static", "client/public/static")
 	r.Static("/fonts", "client/public/fonts")
 	r.StaticFile("/aubio.wasm", "client/public/aubio.wasm")
+	r.StaticFile("/robots.txt", "client/robots.txt")
 	r.StaticFile("/aubio.js", "client/public/aubio.js")
 	r.StaticFile("/a.wasm", "client/public/a.wasm")
 	r.StaticFile("/automation-icon-disabled.png", "client/public/automation-icon-disabled.png")
