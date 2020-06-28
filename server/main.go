@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// Configure templates and static files
-	r.LoadHTMLFiles("client/public/sequencer.html", "client/templates/index.html")
+	r.LoadHTMLFiles("client/public/index.html", "client/templates/test.html")
 	r.Static("/js", "client/js")
 	r.Static("/public", "client/public")
 	r.Static("/static", "client/public/static")
@@ -56,20 +56,17 @@ func main() {
 	r.StaticFile("/a.out.js", "client/public/a.out.js")
 	r.StaticFile("/a.out.wasm", "client/public/a.out.wasm")
 	r.StaticFile("/convolver/PrimeXtraLong.wav", "client/public/convolver/PrimeXtraLong.wav")
+	r.StaticFile("/manifest.json", "client/public/manifest.json")
+	r.StaticFile("/precache-manifest.50377630ce85b5db883d49016b4c961d.js", "client/public/precache-manifest.50377630ce85b5db883d49016b4c961d.js")
 
-	r.GET("/nime", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "sequencer.html", nil)
+	// For pre-cache request (202 never 304)
+	r.GET("/index.html", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
-	r.GET("/nime/:id", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "sequencer.html", nil)
-	})
-
-	// Root app
+	// Serve Chronophonics
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{
-			"title": "Wow, title!",
-		})
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
 	// Admin routes
