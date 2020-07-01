@@ -63,29 +63,40 @@ func EnterRoomHandler(c *Client, m *Message) bson.M {
 	// 	but do not add client to room yet
 	c.Room = room
 
+	// TODO: optimization that isn't implenented
 	// Attempt to get room state
-	var state bson.M
-	var operations []bson.M
-	existingClient := room.Members.GetRandomClient()
-	if existingClient != nil {
-		// Request full state from existing client in room
-		existingClient.Send(bson.M{
-			"type": TypeRequestState,
-		})
-		state, err = c.WaitForState()
-		if err != nil {
-			log.Warnf("unable to get full state: %s", err)
-		}
-	}
-	if state == nil {
-		// Fall back to sending all operations
-		operations, err = database.GetAllOperations(m.RoomName)
-		if err != nil {
-			c.Room = nil
-			return bson.M{
-				"id":    m.ID,
-				"error": fmt.Sprintf("unable to get full state or all operations: %s", err),
-			}
+	// var state bson.M
+	// var operations []bson.M
+	// existingClient := room.Members.GetRandomClient()
+	// if existingClient != nil {
+	// 	// Request full state from existing client in room
+	// 	existingClient.Send(bson.M{
+	// 		"type": TypeRequestState,
+	// 	})
+	// 	state, err = c.WaitForState()
+	// 	if err != nil {
+	// 		log.Warnf("unable to get full state: %s", err)
+	// 	}
+	// }
+	// if state == nil {
+	// 	// Fall back to sending all operations
+	// 	operations, err = database.GetAllOperations(m.RoomName)
+	// 	if err != nil {
+	// 		c.Room = nil
+	// 		return bson.M{
+	// 			"id":    m.ID,
+	// 			"error": fmt.Sprintf("unable to get full state or all operations: %s", err),
+	// 		}
+	// 	}
+	// }
+
+	// Get all operations
+	operations, err := database.GetAllOperations(m.RoomName)
+	if err != nil {
+		c.Room = nil
+		return bson.M{
+			"id":    m.ID,
+			"error": fmt.Sprintf("unable to get full state or all operations: %s", err),
 		}
 	}
 
@@ -111,7 +122,6 @@ func EnterRoomHandler(c *Client, m *Message) bson.M {
 	return bson.M{
 		"id":         m.ID,
 		"roomDoc":    doc,
-		"state":      state,
 		"operations": operations,
 	}
 }

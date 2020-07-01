@@ -6,6 +6,7 @@ node_modules
 env.txt
 fir-test-9a9f3-firebase-adminsdk-hbzpi-90259f5885.json
 __pycache__
+gcp-private-key.json
 
 ################
 # Firebase made
