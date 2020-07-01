@@ -30,7 +30,8 @@ func main() {
 	fb = NewFirebase()
 
 	// Create router
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	// Establish profiling if desired
 	if os.Getenv("PPROF") == "1" {
@@ -58,7 +59,7 @@ func main() {
 	r.StaticFile("/a.out.wasm", "client/public/a.out.wasm")
 	r.StaticFile("/convolver/PrimeXtraLong.wav", "client/public/convolver/PrimeXtraLong.wav")
 	r.StaticFile("/manifest.json", "client/public/manifest.json")
-	r.StaticFile("/precache-manifest.50377630ce85b5db883d49016b4c961d.js", "client/public/precache-manifest.50377630ce85b5db883d49016b4c961d.js")
+	r.StaticFile("/precache-manifest.75c6db4862d7c0729d918ddf80f1c336.js", "client/public/precache-manifest.75c6db4862d7c0729d918ddf80f1c336.js")
 
 	// For pre-cache request (202 never 304)
 	r.GET("/index.html", func(c *gin.Context) {
