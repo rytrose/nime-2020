@@ -26,6 +26,12 @@ func main() {
 	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
 	database = NewDB(mongoConnectString)
 
+	// Reset all NumMembers
+	err := database.ResetNumMembers()
+	if err != nil {
+		log.Fatalf("unable to reset NumMembers for all rooms: %s", err)
+	}
+
 	// Connect to firebase
 	fb = NewFirebase()
 

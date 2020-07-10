@@ -334,3 +334,19 @@ func (db *DB) DeleteAllOperations(roomName string) error {
 
 	return nil
 }
+
+// ResetNumMembers sets the numMembers to 0 for all rooms.
+func (db *DB) ResetNumMembers() error {
+	// Update all NumMembers to 0
+	ctx, _ := context.WithTimeout(context.Background(), DBTimeoutOp*time.Second)
+	filter := bson.M{}
+	update := bson.M{"$set": bson.M{"num_members": 0}}
+
+	updateResult, err := db.roomCol.UpdateMany(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("database update many error: %s", err)
+	}
+	log.Infof("reset NumMembers for %d (filter matched %d)", updateResult.ModifiedCount, updateResult.MatchedCount)
+
+	return nil
+}
