@@ -65,7 +65,7 @@ func main() {
 	r.StaticFile("/a.out.wasm", "client/public/a.out.wasm")
 	r.StaticFile("/convolver/PrimeXtraLong.wav", "client/public/convolver/PrimeXtraLong.wav")
 	r.StaticFile("/manifest.json", "client/public/manifest.json")
-	r.StaticFile("/precache-manifest.ffc7cb4ab2ce21be6f2449035ded346a.js", "client/public/precache-manifest.ffc7cb4ab2ce21be6f2449035ded346a.js")
+	r.StaticFile("/precache-manifest.45c8df3b4bc7a4681eb0bfe5181e106a.js", "client/public/precache-manifest.45c8df3b4bc7a4681eb0bfe5181e106a.js")
 
 	// For pre-cache request (202 never 304)
 	r.GET("/index.html", func(c *gin.Context) {
