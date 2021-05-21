@@ -8,7 +8,8 @@ class Socket extends EventTarget {
 
     constructor(hostname) {
         super();
-        this.s = new WebSocket(`ws://${hostname}`)
+        let wssProtocol = location.protocol === 'https:' ? "wss" : "ws";
+        this.s = new WebSocket(`${wssProtocol}://${hostname}`)
         this.s.addEventListener('open', this.onOpen.bind(this));
         this.s.addEventListener('message', this.onMessage.bind(this));
         this.s.addEventListener('close', this.onClose.bind(this));
