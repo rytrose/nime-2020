@@ -35,6 +35,7 @@ func main() {
 	}
 
 	// Create router
+	log.Infof("Creating router...")
 	r := gin.New()
 	r.Use(gin.Recovery())
 
@@ -144,6 +145,7 @@ func main() {
 		wsHandler(c.Writer, c.Request)
 	})
 
+	log.Infof("Running server...")
 	r.Run(":80")
 }
 
