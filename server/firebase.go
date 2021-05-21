@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -33,7 +34,8 @@ type Firebase struct {
 // NewFirebase creates a firebase client.
 func NewFirebase() *Firebase {
 	ctx, _ := context.WithTimeout(context.Background(), FSTimeoutOp*time.Second)
-	sa := option.WithCredentialsFile("fir-test-9a9f3-firebase-adminsdk-hbzpi-90259f5885.json")
+	firebaseCredentialsJSON := os.Getenv("FIREBASE_CREDENTIALS_JSON")
+	sa := option.WithCredentialsJSON([]byte(firebaseCredentialsJSON))
 	app, err := firebase.NewApp(ctx, nil, sa)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("unable to create firebase app: %s", err))

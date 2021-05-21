@@ -1,0 +1,6 @@
+mongodump --uri mongodb+srv://rytrose:<PASSWORD>@cluster0.hkufl.gcp.mongodb.net  \
+          --archive \
+| \
+mongorestore --uri mongodb+srv://rytrose:<PASSWORD>@cluster0.x5t0a.mongodb.net \
+             --archive \
+             --nsExclude "admin.system.*"

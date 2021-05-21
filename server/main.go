@@ -14,13 +14,15 @@ import (
 )
 
 // TODO: consider specifying buffer sizes
+// TODO: consider using sync.Pool
 var upgrader = websocket.Upgrader{}
-
-const projectID = "fir-test-9a9f3"
 
 func main() {
 	// Configure logging
 	loadLogging()
+
+	// Connect to firebase
+	fb = NewFirebase()
 
 	// Connect to db
 	mongoConnectString := os.Getenv("MONGO_CONNECTION_URL")
@@ -31,9 +33,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to reset NumMembers for all rooms: %s", err)
 	}
-
-	// Connect to firebase
-	fb = NewFirebase()
 
 	// Create router
 	r := gin.New()
