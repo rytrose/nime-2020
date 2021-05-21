@@ -145,8 +145,12 @@ func main() {
 		wsHandler(c.Writer, c.Request)
 	})
 
-	log.Infof("Running server...")
-	r.Run(":80")
+	// Set port
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "80"
+	}
+	r.Run(":" + port)
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
